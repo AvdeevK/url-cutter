@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-var pairsOrURLs = make(map[string]string)
+var pairsOfURLs = make(map[string]string)
 
 func createShortURL(length int) (string, error) {
 	bytes := make([]byte, length)
@@ -37,7 +37,7 @@ func postURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pairsOrURLs[shortURL] = url
+	pairsOfURLs[shortURL] = url
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("http://localhost:8080/%s", shortURL)))
@@ -55,14 +55,14 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originalURL, exists := pairsOrURLs[shortURL]
+	originalURL, exists := pairsOfURLs[shortURL]
 
 	if !exists {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(originalURL))
 }
