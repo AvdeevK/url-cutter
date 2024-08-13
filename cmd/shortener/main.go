@@ -19,6 +19,7 @@ func createShortURL(length int) (string, error) {
 }
 
 func postURLHandler(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -37,23 +38,31 @@ func postURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pairsOfURLs[shortURL] = url
+	pairsOfURLs["/"+shortURL] = url
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("http://localhost:8080/%s", shortURL)))
 }
 
 func getURLHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Header.Get("Location") != "" {
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	shortURL := r.URL.Path[1:]
+	shortURL := r.URL.Path
 	if len(shortURL) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	fmt.Println(shortURL)
+	fmt.Println(pairsOfURLs[shortURL])
 
 	originalURL, exists := pairsOfURLs[shortURL]
 
@@ -62,9 +71,7 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusTemporaryRedirect)
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(originalURL))
+	http.Redirect(w, r, fmt.Sprintf("http://localhost:8080/%s", originalURL), http.StatusTemporaryRedirect)
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
