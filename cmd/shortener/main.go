@@ -71,7 +71,7 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("http://localhost:8080/%s", originalURL), http.StatusTemporaryRedirect)
+	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
