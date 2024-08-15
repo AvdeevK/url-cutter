@@ -46,10 +46,6 @@ func postURLHandler(w http.ResponseWriter, r *http.Request) {
 
 func getURLHandler(w http.ResponseWriter, r *http.Request) {
 
-	if r.Header.Get("Location") != "" {
-		return
-	}
-
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -60,9 +56,6 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	fmt.Println(shortURL)
-	fmt.Println(pairsOfURLs[shortURL])
 
 	originalURL, exists := pairsOfURLs[shortURL]
 
