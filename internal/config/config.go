@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"os"
 )
 
 var Configs struct {
@@ -11,10 +12,16 @@ var Configs struct {
 
 func ParseFlags() {
 
-	// регистрируем переменную flagRunAddr
-	// как аргумент -a со значением :8080 по умолчанию
 	flag.StringVar(&Configs.RequestAddress, "a", "localhost:8080", "server listening port")
 	flag.StringVar(&Configs.ResponseAddress, "b", "http://localhost:8080", "url availiable at port")
-	// парсим переданные серверу аргументы в зарегистрированные переменные
+
 	flag.Parse()
+
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+		Configs.RequestAddress = envRunAddr
+	}
+
+	if envReqAddr := os.Getenv("BASE_URL"); envReqAddr != "" {
+		Configs.ResponseAddress = envReqAddr
+	}
 }
