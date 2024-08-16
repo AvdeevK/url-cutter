@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 var pairsOfURLs = make(map[string]string)
@@ -16,6 +18,10 @@ func createShortURL(length int) (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
+}
+
+func notAllowedMethodsHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusBadRequest)
 }
 
 func postURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -67,23 +73,20 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }
 
-func mainHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost && r.URL.Path == "/" {
-		postURLHandler(w, r)
-	} else if r.Method == http.MethodGet && r.URL.Path != "/" {
-		getURLHandler(w, r)
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-}
-
-func run() error {
-	return http.ListenAndServe(`:8080`, http.HandlerFunc(mainHandler))
+func run(r chi.Router) error {
+	r.MethodNotAllowed(notAllowedMethodsHandler)
+	r.Route("/", func(r chi.Router) {
+		r.Post("/", postURLHandler)
+		r.Route("/{link}", func(r chi.Router) {
+			r.Get("/", getURLHandler)
+		})
+	})
+	return http.ListenAndServe(`:8080`, r)
 }
 
 func main() {
-	if err := run(); err != nil {
+	r := chi.NewRouter()
+	if err := run(r); err != nil {
 		panic(err)
 	}
 }
