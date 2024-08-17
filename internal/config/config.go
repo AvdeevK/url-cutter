@@ -10,11 +10,7 @@ var Configs struct {
 }
 
 func ParseFlags() {
-
-	// регистрируем переменную flagRunAddr
-	// как аргумент -a со значением :8080 по умолчанию
-	flag.StringVar(&Configs.RequestAddress, "a", "localhost:8080", "server listening port")
-	flag.StringVar(&Configs.ResponseAddress, "b", "http://localhost:8080", "url availiable at port")
-	// парсим переданные серверу аргументы в зарегистрированные переменные
+	flag.StringVar(&Configs.RequestAddress, "a", "localhost:8080", "server host")
+	flag.StringVar(&Configs.ResponseAddress, "b", "http://localhost:8080", "short url awailiable at host")
 	flag.Parse()
 }

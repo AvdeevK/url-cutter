@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/AvdeevK/url-cutter.git/internal/config"
 	"github.com/go-chi/chi/v5"
@@ -74,7 +75,7 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }
 
-func run(r chi.Router) error {
+func run(r chi.Router, addr string) error {
 	r.MethodNotAllowed(notAllowedMethodsHandler)
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", postURLHandler)
@@ -82,14 +83,29 @@ func run(r chi.Router) error {
 			r.Get("/", getURLHandler)
 		})
 	})
-	return http.ListenAndServe(config.Configs.RequestAddress, r)
+
+	host := strings.ReplaceAll(addr, "http://", "")
+
+	return http.ListenAndServe(host, r)
 }
 
 func main() {
-	r := chi.NewRouter()
+	postRouter := chi.NewRouter()
+	getRouter := chi.NewRouter()
 
 	config.ParseFlags()
-	if err := run(r); err != nil {
-		panic(err)
-	}
+
+	go func() {
+		if err := run(postRouter, config.Configs.RequestAddress); err != nil {
+			panic(err)
+		}
+	}()
+
+	go func() {
+		if err := run(getRouter, config.Configs.ResponseAddress); err != nil {
+			panic(err)
+		}
+	}()
+
+	select {}
 }
