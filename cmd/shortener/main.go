@@ -76,12 +76,8 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 
 func run(r chi.Router) error {
 	r.MethodNotAllowed(notAllowedMethodsHandler)
-	r.Route("/", func(r chi.Router) {
-		r.Post("/", postURLHandler)
-		r.Route("/{link}", func(r chi.Router) {
-			r.Get("/", getURLHandler)
-		})
-	})
+	r.Post("/", postURLHandler)
+	r.Get("/{link}", getURLHandler)
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 
