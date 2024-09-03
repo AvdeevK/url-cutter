@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"github.com/AvdeevK/url-cutter.git/internal/logger"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 
@@ -75,9 +77,14 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func run(r chi.Router) error {
-	r.MethodNotAllowed(notAllowedMethodsHandler)
-	r.Post("/", postURLHandler)
-	r.Get("/{link}", getURLHandler)
+	if err := logger.Initialize("Info"); err != nil {
+		return err
+	}
+	logger.Log.Info("Running server", zap.String("address", config.Configs.RequestAddress))
+
+	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(notAllowedMethodsHandler)))
+	r.Post("/", logger.RequestLogger(logger.ResponseLogger(postURLHandler)))
+	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(getURLHandler)))
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 
