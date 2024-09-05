@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/AvdeevK/url-cutter.git/internal/config"
 	"github.com/go-chi/chi/v5"
@@ -118,16 +119,42 @@ func getURLHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }
 
+func gzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ow := w
+
+		acceptEncoding := r.Header.Get("Accept-Encoding")
+		supportsGzip := strings.Contains(acceptEncoding, "gzip")
+		if supportsGzip {
+			cw := newCompressWriter(w)
+			ow = cw
+			defer cw.Close()
+		}
+		contentEncoding := r.Header.Get("Content-Encoding")
+		sendsGzip := strings.Contains(contentEncoding, "gzip")
+		if sendsGzip {
+			cr, err := newCompressReader(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			r.Body = cr
+			defer cr.Close()
+		}
+		h.ServeHTTP(ow, r)
+	}
+}
+
 func run(r chi.Router) error {
 	if err := logger.Initialize("Info"); err != nil {
 		return err
 	}
 	logger.Log.Info("Running server", zap.String("address", config.Configs.RequestAddress))
 
-	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(notAllowedMethodsHandler)))
-	r.Post("/", logger.RequestLogger(logger.ResponseLogger(postURLHandler)))
-	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(getURLHandler)))
-	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(postJSONHandler)))
+	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(notAllowedMethodsHandler))))
+	r.Post("/", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(postURLHandler))))
+	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(getURLHandler))))
+	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(postJSONHandler))))
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 
