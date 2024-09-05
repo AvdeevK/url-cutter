@@ -10,6 +10,8 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/AvdeevK/url-cutter.git/internal/config"
@@ -17,6 +19,57 @@ import (
 )
 
 var pairsOfURLs = make(map[string]string)
+
+type AddNewURLRecord struct {
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+var lastUUID int
+
+func addURLToFile(newURL AddNewURLRecord) error {
+	file, err := os.OpenFile(config.Configs.FileStoragePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	enc := json.NewEncoder(file)
+	if err := enc.Encode(&newURL); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func loadURLsFromFile() error {
+	file, err := os.Open(config.Configs.FileStoragePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	defer file.Close()
+
+	dec := json.NewDecoder(file)
+	for {
+		var record AddNewURLRecord
+		if err := dec.Decode(&record); err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+		pairsOfURLs["/"+record.ShortURL] = record.OriginalURL
+		lastUUID, err = strconv.Atoi(record.UUID)
+		if err != nil {
+			logger.Log.Info("can't to get las uuid")
+		}
+	}
+
+	return nil
+}
 
 func createShortURL(length int) (string, error) {
 	bytes := make([]byte, length)
@@ -56,6 +109,17 @@ func postJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	pairsOfURLs["/"+shortURL] = req.RequestURL
 
+	lastUUID += 1
+	record := AddNewURLRecord{
+		UUID:        strconv.Itoa(lastUUID),
+		ShortURL:    shortURL,
+		OriginalURL: req.RequestURL,
+	}
+
+	if err := addURLToFile(record); err != nil {
+		logger.Log.Info("error appending URL to file", zap.Error(err))
+	}
+
 	resp := models.Response{
 		ResponseAddress: fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
 	}
@@ -91,6 +155,17 @@ func postURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pairsOfURLs["/"+shortURL] = url
+
+	lastUUID += 1
+	record := AddNewURLRecord{
+		UUID:        strconv.Itoa(lastUUID),
+		ShortURL:    shortURL,
+		OriginalURL: url,
+	}
+
+	if err := addURLToFile(record); err != nil {
+		logger.Log.Info("error appending URL to file", zap.Error(err))
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL)))
@@ -150,6 +225,10 @@ func run(r chi.Router) error {
 		return err
 	}
 	logger.Log.Info("Running server", zap.String("address", config.Configs.RequestAddress))
+
+	if err := loadURLsFromFile(); err != nil {
+		logger.Log.Error("error loading URLs from file", zap.Error(err))
+	}
 
 	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(notAllowedMethodsHandler))))
 	r.Post("/", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(postURLHandler))))
