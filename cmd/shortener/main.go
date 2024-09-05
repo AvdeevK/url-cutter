@@ -56,7 +56,7 @@ func postJSONHandler(w http.ResponseWriter, r *http.Request) {
 	pairsOfURLs["/"+shortURL] = req.RequestURL
 
 	resp := models.Response{
-		ResponseAddress: fmt.Sprintf("http://%s/%s", config.Configs.ResponseAddress, shortURL),
+		ResponseAddress: fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
