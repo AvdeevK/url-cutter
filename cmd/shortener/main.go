@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
+	"github.com/AvdeevK/url-cutter.git/internal/models"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -25,6 +27,46 @@ func createShortURL(length int) (string, error) {
 
 func notAllowedMethodsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
+}
+
+func postJSONHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var req models.Request
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if len(req.RequestURL) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	shortURL, err := createShortURL(8)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	pairsOfURLs["/"+shortURL] = req.RequestURL
+
+	resp := models.Response{
+		ResponseAddress: fmt.Sprintf("http://%s/%s", config.Configs.ResponseAddress, shortURL),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(resp); err != nil {
+		logger.Log.Info(fmt.Sprintf("error encoding response: %s", err))
+		return
+	}
 }
 
 func postURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +127,7 @@ func run(r chi.Router) error {
 	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(notAllowedMethodsHandler)))
 	r.Post("/", logger.RequestLogger(logger.ResponseLogger(postURLHandler)))
 	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(getURLHandler)))
+	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(postJSONHandler)))
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 
