@@ -8,6 +8,7 @@ import (
 var Configs struct {
 	RequestAddress  string
 	ResponseAddress string
+	FileStoragePath string
 }
 
 func ParseFlags() {
@@ -23,5 +24,12 @@ func ParseFlags() {
 
 	if envReqAddr := os.Getenv("BASE_URL"); envReqAddr != "" {
 		Configs.ResponseAddress = envReqAddr
+	}
+
+	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
+		Configs.FileStoragePath = envFileStoragePath
+	} else {
+		flag.StringVar(&Configs.FileStoragePath, "f", "backup_url.json", "file storage path")
+		flag.Parse()
 	}
 }
