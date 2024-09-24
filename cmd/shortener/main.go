@@ -66,7 +66,9 @@ func main() {
 
 	config.ParseFlags()
 
-	handlers.DB, err = sql.Open("pgx", fmt.Sprintf("host=%s", config.Configs.DatabaseAddress))
+	connDB := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
+		config.Configs.DatabaseAddress, `admin`, `admin`, `urls`)
+	handlers.DB, err = sql.Open("pgx", connDB)
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
