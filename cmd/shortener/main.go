@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
 	"go.uber.org/zap"
@@ -45,6 +46,7 @@ func run(r chi.Router) error {
 		return err
 	}
 	logger.Log.Info("Running server", zap.String("address", config.Configs.RequestAddress))
+	logger.Log.Info("Connection to DB with", zap.String("address", config.Configs.DatabaseAddress))
 
 	if err := handlers.LoadURLsFromFile(); err != nil {
 		logger.Log.Error("error loading URLs from file", zap.Error(err))
@@ -62,13 +64,14 @@ func main() {
 	r := chi.NewRouter()
 	var err error
 
-	handlers.DB, err = sql.Open("pgx", config.Configs.DatabaseAddress)
+	config.ParseFlags()
+
+	handlers.DB, err = sql.Open("pgx", fmt.Sprintf("host=%s", config.Configs.DatabaseAddress))
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
 	defer handlers.DB.Close()
 
-	config.ParseFlags()
 	if err := run(r); err != nil {
 		panic(err)
 	}

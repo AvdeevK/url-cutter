@@ -203,6 +203,7 @@ func PingDBHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := DB.Ping()
 	if err != nil {
+		logger.Log.Error("error of ping: ", zap.Error(err))
 		http.Error(w, "Database connection failed", http.StatusInternalServerError)
 		return
 	}
