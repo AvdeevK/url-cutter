@@ -8,6 +8,7 @@ import (
 var Configs struct {
 	RequestAddress  string
 	ResponseAddress string
+	DatabaseAddress string
 	FileStoragePath string
 }
 
@@ -15,6 +16,7 @@ func ParseFlags() {
 
 	flag.StringVar(&Configs.RequestAddress, "a", "localhost:8080", "server listening port")
 	flag.StringVar(&Configs.ResponseAddress, "b", "http://localhost:8080", "url availiable at port")
+	flag.StringVar(&Configs.ResponseAddress, "d", "localhost:5432", "database availiable at port")
 
 	flag.Parse()
 
@@ -31,5 +33,9 @@ func ParseFlags() {
 	} else {
 		flag.StringVar(&Configs.FileStoragePath, "f", "backup_url.json", "file storage path")
 		flag.Parse()
+	}
+
+	if envDatabaseAddress := os.Getenv("DATABASE_DSN"); envDatabaseAddress != "" {
+		Configs.DatabaseAddress = envDatabaseAddress
 	}
 }

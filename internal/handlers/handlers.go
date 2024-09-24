@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -15,7 +16,10 @@ import (
 	"strconv"
 )
 
-var PairsOfURLs = make(map[string]string)
+var (
+	PairsOfURLs = make(map[string]string)
+	DB          *sql.DB
+)
 
 type AddNewURLRecord struct {
 	UUID        string `json:"uuid"`
@@ -189,4 +193,18 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
+}
+
+func PingDBHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := DB.Ping()
+	if err != nil {
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

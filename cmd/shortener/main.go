@@ -1,14 +1,17 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
 	"go.uber.org/zap"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/AvdeevK/url-cutter.git/internal/config"
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func gzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
@@ -50,12 +53,20 @@ func run(r chi.Router) error {
 	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.NotAllowedMethodsHandler))))
 	r.Post("/", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostURLHandler))))
 	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.GetURLHandler))))
+	r.Get("/ping", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PingDBHandler))))
 	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostJSONHandler))))
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 
 func main() {
 	r := chi.NewRouter()
+	var err error
+
+	handlers.DB, err = sql.Open("pgx", config.Configs.DatabaseAddress)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+	defer handlers.DB.Close()
 
 	config.ParseFlags()
 	if err := run(r); err != nil {
