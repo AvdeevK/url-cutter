@@ -52,8 +52,8 @@ func run(r chi.Router) error {
 
 	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.NotAllowedMethodsHandler))))
 	r.Post("/", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostURLHandler))))
-	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.GetURLHandler))))
 	r.Get("/ping", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PingDBHandler))))
+	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.GetURLHandler))))
 	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostJSONHandler))))
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
