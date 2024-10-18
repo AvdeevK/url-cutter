@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
 	"go.uber.org/zap"
@@ -66,8 +65,7 @@ func main() {
 
 	config.ParseFlags()
 
-	connDB := fmt.Sprintf("host=%s", config.Configs.DatabaseAddress)
-	handlers.DB, err = sql.Open("pgx", connDB)
+	handlers.DB, err = sql.Open("pgx", config.Configs.DatabaseAddress)
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}

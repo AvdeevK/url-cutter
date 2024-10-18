@@ -16,6 +16,7 @@ func ParseFlags() {
 
 	flag.StringVar(&Configs.RequestAddress, "a", "localhost:8080", "server listening port")
 	flag.StringVar(&Configs.ResponseAddress, "b", "http://localhost:8080", "url availiable at port")
+	flag.StringVar(&Configs.DatabaseAddress, "d", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable", "database availiable at port")
 
 	flag.Parse()
 
@@ -36,8 +37,5 @@ func ParseFlags() {
 
 	if envDatabaseAddress := os.Getenv("DATABASE_DSN"); envDatabaseAddress != "" {
 		Configs.DatabaseAddress = envDatabaseAddress
-	} else {
-		flag.StringVar(&Configs.DatabaseAddress, "d", "localhost:5432", "database availiable at port")
-		flag.Parse()
 	}
 }
