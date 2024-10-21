@@ -18,8 +18,8 @@ func NewPostgresStorage(db *sql.DB) *PostgresStorage {
 	}
 }
 
-func (p *PostgresStorage) SaveURL(shortURL, originalURL string) error {
-	_, err := p.db.Exec("INSERT INTO urls (short_url, original_url) VALUES ($1, $2)", shortURL, originalURL)
+func (db *PostgresStorage) SaveURL(shortURL, originalURL string) error {
+	_, err := db.db.Exec("INSERT INTO urls (short_url, original_url) VALUES ($1, $2)", shortURL, originalURL)
 	return err
 }
 
@@ -33,23 +33,23 @@ func (db *PostgresStorage) SaveBatchTransaction(tx *sql.Tx, shortURL string, ori
 	return err
 }
 
-func (p *PostgresStorage) GetOriginalURL(shortURL string) (string, error) {
+func (db *PostgresStorage) GetOriginalURL(shortURL string) (string, error) {
 	var originalURL string
-	err := p.db.QueryRow("SELECT original_url FROM urls WHERE short_url = $1", shortURL).Scan(&originalURL)
+	err := db.db.QueryRow("SELECT original_url FROM urls WHERE short_url = $1", shortURL).Scan(&originalURL)
 	if err == sql.ErrNoRows {
 		return "", errors.New("URL not found")
 	}
 	return originalURL, err
 }
 
-func (p *PostgresStorage) Ping() error {
-	return p.db.Ping()
+func (db *PostgresStorage) Ping() error {
+	return db.db.Ping()
 }
 
-func (p *PostgresStorage) GetStorageName() (string, error) {
-	return p.storageName, nil
+func (db *PostgresStorage) GetStorageName() (string, error) {
+	return db.storageName, nil
 }
 
-func (p *PostgresStorage) SaveBatch(records []models.AddNewURLRecord) error {
+func (db *PostgresStorage) SaveBatch(records []models.AddNewURLRecord) error {
 	return errors.New("not implemented")
 }
