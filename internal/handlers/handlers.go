@@ -176,11 +176,13 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 	var responses []models.BatchResponse
 
 	if err := json.NewDecoder(r.Body).Decode(&records); err != nil {
+		logger.Log.Error("Error decoding request body: ", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if len(records) == 0 {
+		logger.Log.Warn("Received empty batch")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -190,52 +192,65 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 	if storageType == "postgres storage" {
 		tx, err := DB.Begin()
 		if err != nil {
+			logger.Log.Error("Error starting transaction: ", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer tx.Rollback()
 
 		for _, record := range records {
+			if record.OriginalURL == "" {
+				logger.Log.Warn("Original URL is empty for correlation ID")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			shortURL, err := createShortURL(8)
 			if err != nil {
+				logger.Log.Error("Error creating short URL: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
 			if err := store.SaveBatchTransaction(tx, shortURL, record.OriginalURL); err != nil {
+				logger.Log.Error("Error saving URL in transaction: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			responses = append(responses, struct {
-				CorrelationID string `json:"correlation_id"`
-				ShortURL      string `json:"short_url"`
-			}{
+			responses = append(responses, models.BatchResponse{
 				CorrelationID: record.ID,
 				ShortURL:      shortURL,
 			})
 		}
+
 		if err := tx.Commit(); err != nil {
+			logger.Log.Error("Error committing transaction: ", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	} else {
 		for _, record := range records {
+			if record.OriginalURL == "" {
+				logger.Log.Warn("Original URL is empty for correlation ID")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			shortURL, err := createShortURL(8)
 			if err != nil {
+				logger.Log.Error("Error creating short URL: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
 			if err := store.SaveURL(shortURL, record.OriginalURL); err != nil {
+				logger.Log.Error("Error saving URL: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			responses = append(responses, struct {
-				CorrelationID string `json:"correlation_id"`
-				ShortURL      string `json:"short_url"`
-			}{
+			responses = append(responses, models.BatchResponse{
 				CorrelationID: record.ID,
 				ShortURL:      shortURL,
 			})
@@ -244,6 +259,7 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-
-	json.NewEncoder(w).Encode(responses)
+	if err := json.NewEncoder(w).Encode(responses); err != nil {
+		logger.Log.Error("Error encoding response: ", zap.Error(err))
+	}
 }
