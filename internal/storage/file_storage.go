@@ -12,8 +12,9 @@ import (
 )
 
 type FileStorage struct {
-	filePath string
-	urls     map[string]string
+	filePath    string
+	urls        map[string]string
+	storageName string
 }
 
 var lastUUID int
@@ -26,8 +27,9 @@ type AddNewURLRecord struct {
 
 func NewFileStorage(filePath string) (*FileStorage, error) {
 	fs := &FileStorage{
-		filePath: filePath,
-		urls:     models.PairsOfURLs,
+		filePath:    filePath,
+		urls:        models.PairsOfURLs,
+		storageName: "file storage",
 	}
 	err := fs.LoadURLsFromFile()
 	return fs, err
@@ -75,7 +77,7 @@ func (f *FileStorage) LoadURLsFromFile() error {
 		} else if err != nil {
 			return err
 		}
-		f.urls["/"+record.ShortURL] = record.OriginalURL
+		f.urls[record.ShortURL] = record.OriginalURL
 		lastUUID, err = strconv.Atoi(record.UUID)
 		if err != nil {
 			logger.Log.Info("can't to get last uuid")
@@ -98,4 +100,8 @@ func (f *FileStorage) saveToFile(newURL AddNewURLRecord) error {
 	}
 
 	return nil
+}
+
+func (f *FileStorage) GetStorageName() (string, error) {
+	return f.storageName, nil
 }

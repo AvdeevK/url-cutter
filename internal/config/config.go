@@ -28,7 +28,7 @@ func ParseFlags() {
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
 		Configs.FileStoragePath = envFileStoragePath
 	} else {
-		flag.StringVar(&Configs.FileStoragePath, "f", "backup_url.json", "file storage path")
+		flag.StringVar(&Configs.FileStoragePath, "f", "", "file storage path")
 	}
 
 	if envDatabaseAddress := os.Getenv("DATABASE_DSN"); envDatabaseAddress != "" {

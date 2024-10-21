@@ -6,11 +6,15 @@ import (
 )
 
 type MemoryStorage struct {
-	urls map[string]string
+	urls        map[string]string
+	storageName string
 }
 
 func NewMemoryStorage() *MemoryStorage {
-	return &MemoryStorage{urls: models.PairsOfURLs}
+	return &MemoryStorage{
+		urls:        models.PairsOfURLs,
+		storageName: "memory storage",
+	}
 }
 
 func (m *MemoryStorage) SaveURL(shortURL, originalURL string) error {
@@ -28,4 +32,8 @@ func (m *MemoryStorage) GetOriginalURL(shortURL string) (string, error) {
 
 func (m *MemoryStorage) Ping() error {
 	return nil
+}
+
+func (m *MemoryStorage) GetStorageName() (string, error) {
+	return m.storageName, nil
 }

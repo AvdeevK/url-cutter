@@ -6,11 +6,15 @@ import (
 )
 
 type PostgresStorage struct {
-	db *sql.DB
+	db          *sql.DB
+	storageName string
 }
 
 func NewPostgresStorage(db *sql.DB) *PostgresStorage {
-	return &PostgresStorage{db: db}
+	return &PostgresStorage{
+		db:          db,
+		storageName: "postgres storage",
+	}
 }
 
 func (p *PostgresStorage) SaveURL(shortURL, originalURL string) error {
@@ -29,4 +33,8 @@ func (p *PostgresStorage) GetOriginalURL(shortURL string) (string, error) {
 
 func (p *PostgresStorage) Ping() error {
 	return p.db.Ping()
+}
+
+func (p *PostgresStorage) GetStorageName() (string, error) {
+	return p.storageName, nil
 }

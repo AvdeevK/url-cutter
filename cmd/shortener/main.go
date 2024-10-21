@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
 	"github.com/AvdeevK/url-cutter.git/internal/storage"
@@ -46,7 +47,6 @@ func run(r chi.Router) error {
 		return err
 	}
 	logger.Log.Info("Running server", zap.String("address", config.Configs.RequestAddress))
-	logger.Log.Info("Connection to DB with", zap.String("address", config.Configs.DatabaseAddress))
 
 	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.NotAllowedMethodsHandler))))
 	r.Post("/", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostURLHandler))))
@@ -72,6 +72,7 @@ func main() {
 		defer handlers.DB.Close()
 
 		storageType = storage.NewPostgresStorage(handlers.DB)
+		logger.Log.Info("Connection to DB with", zap.String("address", config.Configs.DatabaseAddress))
 
 		// Создание таблицы
 		if err := handlers.CreateTable(handlers.DB); err != nil {
@@ -84,10 +85,14 @@ func main() {
 			log.Fatalf("Failed to initialize file storage: %v", err)
 		}
 		storageType = fs
+		storageName, _ := fs.GetStorageName()
+		logger.Log.Info(fmt.Sprintf("initialized %s", storageName))
 
 	} else {
 		// Иначе, используем память
 		storageType = storage.NewMemoryStorage()
+		storageName, _ := storageType.GetStorageName()
+		logger.Log.Info(fmt.Sprintf("initialized %s", storageName))
 	}
 
 	handlers.InitializeStorage(storageType)

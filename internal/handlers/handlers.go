@@ -134,18 +134,21 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
+		logger.Log.Info(fmt.Sprintf("incoming HTTP request isn't get"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	shortURL := r.URL.Path
+	shortURL := r.URL.Path[1:]
 	if len(shortURL) == 0 {
+		logger.Log.Info(fmt.Sprintf("requested url is empty"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	originalURL, err := store.GetOriginalURL(shortURL)
 	if err != nil {
+		logger.Log.Info(fmt.Sprintf("requested %s url, which isn't found", shortURL))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
