@@ -99,6 +99,7 @@ func (f *FileStorage) saveToFile(newURL AddNewURLRecord) error {
 		return err
 	}
 
+	f.urls[newURL.ShortURL] = newURL.OriginalURL
 	return nil
 }
 
