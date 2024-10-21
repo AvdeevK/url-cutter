@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
+	"github.com/AvdeevK/url-cutter.git/internal/storage"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
@@ -47,10 +48,6 @@ func run(r chi.Router) error {
 	logger.Log.Info("Running server", zap.String("address", config.Configs.RequestAddress))
 	logger.Log.Info("Connection to DB with", zap.String("address", config.Configs.DatabaseAddress))
 
-	if err := handlers.LoadURLsFromFile(); err != nil {
-		logger.Log.Error("error loading URLs from file", zap.Error(err))
-	}
-
 	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.NotAllowedMethodsHandler))))
 	r.Post("/", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostURLHandler))))
 	r.Get("/ping", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PingDBHandler))))
@@ -65,11 +62,35 @@ func main() {
 
 	config.ParseFlags()
 
-	handlers.DB, err = sql.Open("pgx", config.Configs.DatabaseAddress)
-	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
+	var storageType storage.Storage
+
+	if config.Configs.DatabaseAddress != "" {
+		handlers.DB, err = sql.Open("pgx", config.Configs.DatabaseAddress)
+		if err != nil {
+			log.Fatalf("Error opening database: %v", err)
+		}
+		defer handlers.DB.Close()
+
+		storageType = storage.NewPostgresStorage(handlers.DB)
+
+		// Создание таблицы
+		if err := handlers.CreateTable(handlers.DB); err != nil {
+			log.Fatalf("Failed to create table: %v", err)
+		}
+	} else if config.Configs.FileStoragePath != "" {
+		// Если есть путь к файлу, используем файл
+		fs, err := storage.NewFileStorage(config.Configs.FileStoragePath)
+		if err != nil {
+			log.Fatalf("Failed to initialize file storage: %v", err)
+		}
+		storageType = fs
+
+	} else {
+		// Иначе, используем память
+		storageType = storage.NewMemoryStorage()
 	}
-	defer handlers.DB.Close()
+
+	handlers.InitializeStorage(storageType)
 
 	if err := run(r); err != nil {
 		panic(err)

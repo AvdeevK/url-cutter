@@ -7,3 +7,5 @@ type Request struct {
 type Response struct {
 	ResponseAddress string `json:"result"`
 }
+
+var PairsOfURLs = make(map[string]string)

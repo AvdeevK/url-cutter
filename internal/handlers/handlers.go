@@ -9,25 +9,39 @@ import (
 	"github.com/AvdeevK/url-cutter.git/internal/config"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
 	"github.com/AvdeevK/url-cutter.git/internal/models"
+	"github.com/AvdeevK/url-cutter.git/internal/storage"
 	"go.uber.org/zap"
 	"io"
+	"log"
 	"net/http"
-	"os"
-	"strconv"
 )
 
 var (
-	PairsOfURLs = make(map[string]string)
-	DB          *sql.DB
+	DB *sql.DB
 )
 
-type AddNewURLRecord struct {
-	UUID        string `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
+var store storage.Storage
+
+func InitializeStorage(s storage.Storage) {
+	store = s
 }
 
-var lastUUID int
+func CreateTable(db *sql.DB) error {
+	// SQL-запрос для создания таблицы, если её нет
+	query := `
+	CREATE TABLE IF NOT EXISTS urls (
+		id SERIAL PRIMARY KEY,
+		short_url VARCHAR(255) NOT NULL UNIQUE,
+		original_url TEXT NOT NULL
+	);`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("error creating table: %w", err)
+	}
+
+	return nil
+}
 
 func createShortURL(length int) (string, error) {
 	bytes := make([]byte, length)
@@ -35,49 +49,6 @@ func createShortURL(length int) (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
-}
-
-func addURLToFile(newURL AddNewURLRecord) error {
-	file, err := os.OpenFile(config.Configs.FileStoragePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	enc := json.NewEncoder(file)
-	if err := enc.Encode(&newURL); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func LoadURLsFromFile() error {
-	file, err := os.Open(config.Configs.FileStoragePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	defer file.Close()
-
-	dec := json.NewDecoder(file)
-	for {
-		var record AddNewURLRecord
-		if err := dec.Decode(&record); err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-		PairsOfURLs["/"+record.ShortURL] = record.OriginalURL
-		lastUUID, err = strconv.Atoi(record.UUID)
-		if err != nil {
-			logger.Log.Info("can't to get las uuid")
-		}
-	}
-
-	return nil
 }
 
 func NotAllowedMethodsHandler(w http.ResponseWriter, r *http.Request) {
@@ -108,17 +79,11 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	PairsOfURLs["/"+shortURL] = req.RequestURL
-
-	lastUUID += 1
-	record := AddNewURLRecord{
-		UUID:        strconv.Itoa(lastUUID),
-		ShortURL:    shortURL,
-		OriginalURL: req.RequestURL,
-	}
-
-	if err := addURLToFile(record); err != nil {
-		logger.Log.Info("error appending URL to file", zap.Error(err))
+	err = store.SaveURL(shortURL, req.RequestURL)
+	if err != nil {
+		log.Printf("Error saving URL: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	resp := models.Response{
@@ -155,17 +120,11 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	PairsOfURLs["/"+shortURL] = url
-
-	lastUUID += 1
-	record := AddNewURLRecord{
-		UUID:        strconv.Itoa(lastUUID),
-		ShortURL:    shortURL,
-		OriginalURL: url,
-	}
-
-	if err := addURLToFile(record); err != nil {
-		logger.Log.Info("error appending URL to file", zap.Error(err))
+	err = store.SaveURL(shortURL, url)
+	if err != nil {
+		log.Printf("Error saving URL: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -185,9 +144,8 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originalURL, exists := PairsOfURLs[shortURL]
-
-	if !exists {
+	originalURL, err := store.GetOriginalURL(shortURL)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

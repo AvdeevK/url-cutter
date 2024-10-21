@@ -16,9 +16,6 @@ func ParseFlags() {
 
 	flag.StringVar(&Configs.RequestAddress, "a", "localhost:8080", "server listening port")
 	flag.StringVar(&Configs.ResponseAddress, "b", "http://localhost:8080", "url availiable at port")
-	flag.StringVar(&Configs.DatabaseAddress, "d", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable", "database availiable at port")
-
-	flag.Parse()
 
 	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
 		Configs.RequestAddress = envRunAddr
@@ -32,10 +29,13 @@ func ParseFlags() {
 		Configs.FileStoragePath = envFileStoragePath
 	} else {
 		flag.StringVar(&Configs.FileStoragePath, "f", "backup_url.json", "file storage path")
-		flag.Parse()
 	}
 
 	if envDatabaseAddress := os.Getenv("DATABASE_DSN"); envDatabaseAddress != "" {
 		Configs.DatabaseAddress = envDatabaseAddress
+	} else {
+		flag.StringVar(&Configs.DatabaseAddress, "d", "", "database availiable at port")
 	}
+
+	flag.Parse()
 }
