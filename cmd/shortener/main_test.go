@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
+	"github.com/AvdeevK/url-cutter.git/internal/models"
 	"github.com/AvdeevK/url-cutter.git/internal/storage"
 	"net/http"
 	"net/http/httptest"
@@ -11,8 +12,6 @@ import (
 	"github.com/AvdeevK/url-cutter.git/internal/config"
 	"github.com/stretchr/testify/assert"
 )
-
-var urls = map[string]string{}
 
 func TestPostJSONURLHandler(t *testing.T) {
 	// описываем ожидаемое тело ответа при успешном запросе
@@ -117,8 +116,8 @@ func TestGetURLHandler(t *testing.T) {
 
 	handlers.InitializeStorage(storage.NewMemoryStorage())
 
-	urls["qMBUnCeI"] = "http://yandex.ru"
-	urls["hbflpNSd"] = "http://wLlvfmtuXUcjYopEUIpsmFORoKlQyINZQwucmqLKzLzJM" +
+	models.PairsOfURLs["qMBUnCeI"] = "http://yandex.ru"
+	models.PairsOfURLs["hbflpNSd"] = "http://wLlvfmtuXUcjYopEUIpsmFORoKlQyINZQwucmqLKzLzJM" +
 		"oAdIDWcMfAiJhDZZZlQbZWsolaiYEFUtQGZTBfvQGMZzbVaCWdOFLSZ.com"
 
 	testCases := []struct {
@@ -133,7 +132,7 @@ func TestGetURLHandler(t *testing.T) {
 			method:         http.MethodGet,
 			expectedCode:   http.StatusTemporaryRedirect,
 			path:           "/qMBUnCeI",
-			headerLocation: urls["qMBUnCeI"],
+			headerLocation: models.PairsOfURLs["qMBUnCeI"],
 		},
 		{
 			testName:       "Тест с пустым телом запроса",
@@ -147,7 +146,7 @@ func TestGetURLHandler(t *testing.T) {
 			method:         http.MethodGet,
 			expectedCode:   http.StatusTemporaryRedirect,
 			path:           "/hbflpNSd",
-			headerLocation: urls["hbflpNSd"],
+			headerLocation: models.PairsOfURLs["hbflpNSd"],
 		},
 		{
 			testName:       "Тест с несуществующим коротким  URL",

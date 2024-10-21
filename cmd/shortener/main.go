@@ -43,9 +43,6 @@ func gzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 }
 
 func run(r chi.Router) error {
-	if err := logger.Initialize("Info"); err != nil {
-		return err
-	}
 	logger.Log.Info("Running server", zap.String("address", config.Configs.RequestAddress))
 
 	r.MethodNotAllowed(logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.NotAllowedMethodsHandler))))
@@ -63,6 +60,10 @@ func main() {
 	config.ParseFlags()
 
 	var storageType storage.Storage
+
+	if err = logger.Initialize("Info"); err != nil {
+		panic(err)
+	}
 
 	if config.Configs.DatabaseAddress != "" {
 		handlers.DB, err = sql.Open("pgx", config.Configs.DatabaseAddress)
