@@ -134,14 +134,14 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
-		logger.Log.Info(fmt.Sprintf("incoming HTTP request isn't get"))
+		logger.Log.Info("incoming HTTP request isn't get")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	shortURL := r.URL.Path[1:]
 	if len(shortURL) == 0 {
-		logger.Log.Info(fmt.Sprintf("requested url is empty"))
+		logger.Log.Info("requested url is empty")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
