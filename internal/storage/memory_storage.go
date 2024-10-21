@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/AvdeevK/url-cutter.git/internal/models"
 )
@@ -36,4 +37,15 @@ func (m *MemoryStorage) Ping() error {
 
 func (m *MemoryStorage) GetStorageName() (string, error) {
 	return m.storageName, nil
+}
+
+func (m *MemoryStorage) SaveBatch(records []models.AddNewURLRecord) error {
+	for _, record := range records {
+		m.urls[record.ShortURL] = record.OriginalURL
+	}
+	return nil
+}
+
+func (m *MemoryStorage) SaveBatchTransaction(tx *sql.Tx, shortURL string, originalURL string) error {
+	return errors.New("not implemented")
 }

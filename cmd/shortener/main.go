@@ -50,6 +50,8 @@ func run(r chi.Router) error {
 	r.Get("/ping", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PingDBHandler))))
 	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.GetURLHandler))))
 	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostJSONHandler))))
+	r.Post("/api/shorten/batch", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostBatchURLHandler))))
+
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 

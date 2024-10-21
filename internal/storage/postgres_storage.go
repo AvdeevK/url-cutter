@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"github.com/AvdeevK/url-cutter.git/internal/models"
 )
 
 type PostgresStorage struct {
@@ -22,6 +23,16 @@ func (p *PostgresStorage) SaveURL(shortURL, originalURL string) error {
 	return err
 }
 
+func (db *PostgresStorage) SaveBatchTransaction(tx *sql.Tx, shortURL string, originalURL string) error {
+	if tx == nil {
+		return errors.New("transaction is nil")
+	}
+
+	query := "INSERT INTO urls (short_url, original_url) VALUES ($1, $2)"
+	_, err := tx.Exec(query, shortURL, originalURL)
+	return err
+}
+
 func (p *PostgresStorage) GetOriginalURL(shortURL string) (string, error) {
 	var originalURL string
 	err := p.db.QueryRow("SELECT original_url FROM urls WHERE short_url = $1", shortURL).Scan(&originalURL)
@@ -37,4 +48,8 @@ func (p *PostgresStorage) Ping() error {
 
 func (p *PostgresStorage) GetStorageName() (string, error) {
 	return p.storageName, nil
+}
+
+func (p *PostgresStorage) SaveBatch(records []models.AddNewURLRecord) error {
+	return errors.New("not implemented")
 }

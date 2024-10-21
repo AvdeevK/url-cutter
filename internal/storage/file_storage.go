@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"github.com/AvdeevK/url-cutter.git/internal/config"
@@ -19,12 +20,6 @@ type FileStorage struct {
 
 var lastUUID int
 
-type AddNewURLRecord struct {
-	UUID        string `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
 func NewFileStorage(filePath string) (*FileStorage, error) {
 	fs := &FileStorage{
 		filePath:    filePath,
@@ -38,8 +33,8 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 func (f *FileStorage) SaveURL(shortURL, originalURL string) error {
 	lastUUID += 1
 
-	record := AddNewURLRecord{
-		UUID:        strconv.Itoa(lastUUID),
+	record := models.AddNewURLRecord{
+		ID:          strconv.Itoa(lastUUID),
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
 	}
@@ -71,14 +66,14 @@ func (f *FileStorage) LoadURLsFromFile() error {
 
 	dec := json.NewDecoder(file)
 	for {
-		var record AddNewURLRecord
+		var record models.AddNewURLRecord
 		if err := dec.Decode(&record); err == io.EOF {
 			break
 		} else if err != nil {
 			return err
 		}
 		f.urls[record.ShortURL] = record.OriginalURL
-		lastUUID, err = strconv.Atoi(record.UUID)
+		lastUUID, err = strconv.Atoi(record.ID)
 		if err != nil {
 			logger.Log.Info("can't to get last uuid")
 		}
@@ -87,7 +82,7 @@ func (f *FileStorage) LoadURLsFromFile() error {
 	return nil
 }
 
-func (f *FileStorage) saveToFile(newURL AddNewURLRecord) error {
+func (f *FileStorage) saveToFile(newURL models.AddNewURLRecord) error {
 	file, err := os.OpenFile(config.Configs.FileStoragePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -105,4 +100,17 @@ func (f *FileStorage) saveToFile(newURL AddNewURLRecord) error {
 
 func (f *FileStorage) GetStorageName() (string, error) {
 	return f.storageName, nil
+}
+
+func (f *FileStorage) SaveBatch(records []models.AddNewURLRecord) error {
+	for _, record := range records {
+		if err := f.saveToFile(record); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *FileStorage) SaveBatchTransaction(tx *sql.Tx, shortURL string, originalURL string) error {
+	return errors.New("not implemented")
 }

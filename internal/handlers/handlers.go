@@ -170,3 +170,80 @@ func PingDBHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+
+func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
+	var records []models.AddNewURLRecord
+	var responses []models.BatchResponse
+
+	if err := json.NewDecoder(r.Body).Decode(&records); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if len(records) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	storageType, _ := store.GetStorageName()
+
+	if storageType == "postgres storage" {
+		tx, err := DB.Begin()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback()
+
+		for _, record := range records {
+			shortURL, err := createShortURL(8)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if err := store.SaveBatchTransaction(tx, shortURL, record.OriginalURL); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			responses = append(responses, struct {
+				CorrelationID string `json:"correlation_id"`
+				ShortURL      string `json:"short_url"`
+			}{
+				CorrelationID: record.ID,
+				ShortURL:      shortURL,
+			})
+		}
+		if err := tx.Commit(); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		for _, record := range records {
+			shortURL, err := createShortURL(8)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if err := store.SaveURL(shortURL, record.OriginalURL); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			responses = append(responses, struct {
+				CorrelationID string `json:"correlation_id"`
+				ShortURL      string `json:"short_url"`
+			}{
+				CorrelationID: record.ID,
+				ShortURL:      shortURL,
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	json.NewEncoder(w).Encode(responses)
+}
