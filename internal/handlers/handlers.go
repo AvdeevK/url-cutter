@@ -220,7 +220,7 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 
 			responses = append(responses, models.BatchResponse{
 				CorrelationID: record.ID,
-				ShortURL:      shortURL,
+				ShortURL:      fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
 			})
 		}
 
@@ -252,7 +252,7 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 
 			responses = append(responses, models.BatchResponse{
 				CorrelationID: record.ID,
-				ShortURL:      shortURL,
+				ShortURL:      fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
 			})
 		}
 	}
