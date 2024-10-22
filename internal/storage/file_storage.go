@@ -30,7 +30,7 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	return fs, err
 }
 
-func (f *FileStorage) SaveURL(shortURL, originalURL string) error {
+func (f *FileStorage) SaveURL(shortURL, originalURL string) (string, error) {
 	lastUUID += 1
 
 	record := models.AddNewURLRecord{
@@ -39,7 +39,7 @@ func (f *FileStorage) SaveURL(shortURL, originalURL string) error {
 		OriginalURL: originalURL,
 	}
 
-	return f.saveToFile(record)
+	return "", f.saveToFile(record)
 }
 
 func (f *FileStorage) GetOriginalURL(shortURL string) (string, error) {

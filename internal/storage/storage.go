@@ -6,7 +6,7 @@ import (
 )
 
 type Storage interface {
-	SaveURL(shortURL, originalURL string) error
+	SaveURL(shortURL, originalURL string) (string, error)
 	GetOriginalURL(shortURL string) (string, error)
 	Ping() error
 	SaveBatch([]models.AddNewURLRecord) error

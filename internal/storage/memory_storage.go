@@ -18,9 +18,9 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-func (m *MemoryStorage) SaveURL(shortURL, originalURL string) error {
+func (m *MemoryStorage) SaveURL(shortURL, originalURL string) (string, error) {
 	m.urls[shortURL] = originalURL
-	return nil
+	return "", nil
 }
 
 func (m *MemoryStorage) GetOriginalURL(shortURL string) (string, error) {

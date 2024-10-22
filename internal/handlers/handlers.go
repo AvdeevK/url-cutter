@@ -27,17 +27,18 @@ func InitializeStorage(s storage.Storage) {
 }
 
 func CreateTable(db *sql.DB) error {
-	// SQL-запрос для создания таблицы, если её нет
 	query := `
 	CREATE TABLE IF NOT EXISTS urls (
 		id SERIAL PRIMARY KEY,
 		short_url VARCHAR(255) NOT NULL UNIQUE,
 		original_url TEXT NOT NULL
-	);`
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS unique_original_url ON urls (original_url);
+	`
 
 	_, err := db.Exec(query)
 	if err != nil {
-		return fmt.Errorf("error creating table: %w", err)
+		return fmt.Errorf("error creating table or index: %w", err)
 	}
 
 	return nil
@@ -53,6 +54,41 @@ func createShortURL(length int) (string, error) {
 
 func NotAllowedMethodsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
+}
+
+func PostURLHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil || len(body) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	url := string(body)
+
+	shortURL, err := createShortURL(8)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	existingShortURL, err := store.SaveURL(shortURL, url)
+	if err != nil {
+		if err.Error() == "conflict" {
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, existingShortURL)))
+			return
+		}
+		log.Printf("Error saving URL: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL)))
 }
 
 func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,8 +115,23 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = store.SaveURL(shortURL, req.RequestURL)
+	existingShortURL, err := store.SaveURL(shortURL, req.RequestURL)
 	if err != nil {
+		if err.Error() == "conflict" {
+			resp := models.Response{
+				ResponseAddress: fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, existingShortURL),
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+
+			enc := json.NewEncoder(w)
+			if err := enc.Encode(resp); err != nil {
+				logger.Log.Info(fmt.Sprintf("error encoding response: %s", err))
+				return
+			}
+			return
+		}
 		log.Printf("Error saving URL: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -98,37 +149,6 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Log.Info(fmt.Sprintf("error encoding response: %s", err))
 		return
 	}
-}
-
-func PostURLHandler(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil || len(body) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	url := string(body)
-
-	shortURL, err := createShortURL(8)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	err = store.SaveURL(shortURL, url)
-	if err != nil {
-		log.Printf("Error saving URL: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL)))
 }
 
 func GetURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -244,7 +264,7 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if err := store.SaveURL(shortURL, record.OriginalURL); err != nil {
+			if _, err := store.SaveURL(shortURL, record.OriginalURL); err != nil {
 				logger.Log.Error("Error saving URL: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
