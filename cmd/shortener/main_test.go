@@ -1,6 +1,9 @@
 package main
 
 import (
+	"github.com/AvdeevK/url-cutter.git/internal/handlers"
+	"github.com/AvdeevK/url-cutter.git/internal/models"
+	"github.com/AvdeevK/url-cutter.git/internal/storage"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +17,7 @@ func TestPostJSONURLHandler(t *testing.T) {
 	// описываем ожидаемое тело ответа при успешном запросе
 
 	requredPathOfResponseBody := config.Configs.ResponseAddress
+	handlers.InitializeStorage(storage.NewMemoryStorage())
 
 	testCases := []struct {
 		testName     string
@@ -47,8 +51,7 @@ func TestPostJSONURLHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// вызовем хендлер как обычную функцию, без запуска самого сервера
-			postJSONHandler(w, r)
-
+			handlers.PostJSONHandler(w, r)
 			// проверим корректность полученного тела ответа, если мы его ожидаем
 
 			if tc.requestBody != "" {
@@ -97,7 +100,7 @@ func TestPostURLHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// вызовем хендлер как обычную функцию, без запуска самого сервера
-			postURLHandler(w, r)
+			handlers.PostURLHandler(w, r)
 
 			// проверим корректность полученного тела ответа, если мы его ожидаем
 
@@ -110,10 +113,11 @@ func TestPostURLHandler(t *testing.T) {
 }
 
 func TestGetURLHandler(t *testing.T) {
-	// описываем ожидаемое тело ответа при успешном запросе
 
-	pairsOfURLs["/qMBUnCeI"] = "http://yandex.ru"
-	pairsOfURLs["/hbflpNSd"] = "http://wLlvfmtuXUcjYopEUIpsmFORoKlQyINZQwucmqLKzLzJM" +
+	handlers.InitializeStorage(storage.NewMemoryStorage())
+
+	models.PairsOfURLs["qMBUnCeI"] = "http://yandex.ru"
+	models.PairsOfURLs["hbflpNSd"] = "http://wLlvfmtuXUcjYopEUIpsmFORoKlQyINZQwucmqLKzLzJM" +
 		"oAdIDWcMfAiJhDZZZlQbZWsolaiYEFUtQGZTBfvQGMZzbVaCWdOFLSZ.com"
 
 	testCases := []struct {
@@ -128,7 +132,7 @@ func TestGetURLHandler(t *testing.T) {
 			method:         http.MethodGet,
 			expectedCode:   http.StatusTemporaryRedirect,
 			path:           "/qMBUnCeI",
-			headerLocation: pairsOfURLs["/qMBUnCeI"],
+			headerLocation: models.PairsOfURLs["qMBUnCeI"],
 		},
 		{
 			testName:       "Тест с пустым телом запроса",
@@ -142,7 +146,7 @@ func TestGetURLHandler(t *testing.T) {
 			method:         http.MethodGet,
 			expectedCode:   http.StatusTemporaryRedirect,
 			path:           "/hbflpNSd",
-			headerLocation: pairsOfURLs["/hbflpNSd"],
+			headerLocation: models.PairsOfURLs["hbflpNSd"],
 		},
 		{
 			testName:       "Тест с несуществующим коротким  URL",
@@ -159,7 +163,7 @@ func TestGetURLHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// вызовем хендлер как обычную функцию, без запуска самого сервера
-			getURLHandler(w, r)
+			handlers.GetURLHandler(w, r)
 
 			// проверим корректность полученного тела ответа, если мы его ожидаем
 
