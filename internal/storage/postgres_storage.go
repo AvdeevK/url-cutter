@@ -18,16 +18,16 @@ func NewPostgresStorage(db *sql.DB) *PostgresStorage {
 	}
 }
 
-func (db *PostgresStorage) SaveURL(shortURL, originalURL string) (string, error) {
+func (db *PostgresStorage) SaveURL(shortURL, originalURL, userID string) (string, error) {
 	query := `
-        INSERT INTO urls (short_url, original_url)
-        VALUES ($1, $2)
+        INSERT INTO urls (user_id, short_url, original_url)
+        VALUES ($1, $2, $3)
         ON CONFLICT (original_url) DO NOTHING
         RETURNING short_url;
     `
 
 	var existingShortURL string
-	err := db.db.QueryRow(query, shortURL, originalURL).Scan(&existingShortURL)
+	err := db.db.QueryRow(query, userID, shortURL, originalURL).Scan(&existingShortURL)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -38,13 +38,14 @@ func (db *PostgresStorage) SaveURL(shortURL, originalURL string) (string, error)
 	return existingShortURL, nil
 }
 
-func (db *PostgresStorage) SaveBatchTransaction(tx *sql.Tx, shortURL string, originalURL string) error {
+func (db *PostgresStorage) SaveBatchTransaction(
+	tx *sql.Tx, shortURL string, originalURL string, userID string) error {
 	if tx == nil {
 		return errors.New("transaction is nil")
 	}
 
-	query := "INSERT INTO urls (short_url, original_url) VALUES ($1, $2)"
-	_, err := tx.Exec(query, shortURL, originalURL)
+	query := "INSERT INTO urls (user_id, short_url, original_url) VALUES ($1, $2, $3)"
+	_, err := tx.Exec(query, userID, shortURL, originalURL)
 	return err
 }
 
@@ -82,4 +83,24 @@ func (db *PostgresStorage) GetStorageName() (string, error) {
 
 func (db *PostgresStorage) SaveBatch(records []models.AddNewURLRecord) error {
 	return errors.New("not implemented")
+}
+
+func (ps *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
+	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1`
+	rows, err := ps.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []models.BasePairsOfURLsResponse
+	for rows.Next() {
+		var record models.BasePairsOfURLsResponse
+		if err := rows.Scan(&record.ShortURL, &record.OriginalURL); err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+
+	return records, nil
 }

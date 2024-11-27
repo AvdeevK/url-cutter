@@ -7,7 +7,7 @@ import (
 )
 
 type MemoryStorage struct {
-	urls        map[string]string
+	urls        map[string][]string
 	storageName string
 }
 
@@ -18,16 +18,18 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-func (m *MemoryStorage) SaveURL(shortURL, originalURL string) (string, error) {
-	m.urls[shortURL] = originalURL
+func (m *MemoryStorage) SaveURL(shortURL, originalURL string, userID string) (string, error) {
+	attributes := &[]string{originalURL, userID}
+	m.urls[shortURL] = *attributes
 	return "", nil
 }
 
 func (m *MemoryStorage) GetOriginalURL(shortURL string) (string, error) {
-	originalURL, exists := m.urls[shortURL]
+	attributes, exists := m.urls[shortURL]
 	if !exists {
 		return "", errors.New("URL not found")
 	}
+	originalURL := attributes[0]
 	return originalURL, nil
 }
 
@@ -41,11 +43,16 @@ func (m *MemoryStorage) GetStorageName() (string, error) {
 
 func (m *MemoryStorage) SaveBatch(records []models.AddNewURLRecord) error {
 	for _, record := range records {
-		m.urls[record.ShortURL] = record.OriginalURL
+		attributes := &[]string{record.ShortURL, record.UserID}
+		m.urls[record.ShortURL] = *attributes
 	}
 	return nil
 }
 
-func (m *MemoryStorage) SaveBatchTransaction(tx *sql.Tx, shortURL string, originalURL string) error {
+func (m *MemoryStorage) SaveBatchTransaction(tx *sql.Tx, shortURL, originalURL, userID string) error {
 	return errors.New("not implemented")
+}
+
+func (m *MemoryStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
+	return nil, errors.New("not implemented")
 }

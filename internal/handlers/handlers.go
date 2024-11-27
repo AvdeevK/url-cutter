@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/AvdeevK/url-cutter.git/internal/auth"
 	"github.com/AvdeevK/url-cutter.git/internal/config"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
 	"github.com/AvdeevK/url-cutter.git/internal/models"
@@ -31,7 +32,8 @@ func CreateTable(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS urls (
 		id SERIAL PRIMARY KEY,
 		short_url VARCHAR(255) NOT NULL UNIQUE,
-		original_url TEXT NOT NULL
+		original_url TEXT NOT NULL,
+	    user_id TEXT NOT NULL
 	);
 	CREATE UNIQUE INDEX IF NOT EXISTS unique_original_url ON urls (original_url);
 	`
@@ -44,7 +46,7 @@ func CreateTable(db *sql.DB) error {
 	return nil
 }
 
-func createShortURL(length int) (string, error) {
+func generateShortURL(length int) (string, error) {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
@@ -61,6 +63,25 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	userID, exists, err := auth.GetAuthCookie(r)
+	if !exists || err != nil {
+		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
+		logger.Log.Info("start processing of creating cookie")
+		newUserID, err := auth.GenerateUserID()
+		if err != nil {
+			logger.Log.Info("error of generating user id")
+			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
+			return
+		}
+		userID = newUserID
+		auth.SetAuthCookie(w, newUserID)
+		logger.Log.Info("finished processing of creating cookie")
+	}
+
+	if userID == "" {
+		logger.Log.Error("got empty user id in cookie, skip processing")
+		http.Error(w, "empty user id", http.StatusUnauthorized)
+	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
@@ -69,13 +90,13 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	url := string(body)
 
-	shortURL, err := createShortURL(8)
+	shortURL, err := generateShortURL(8)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	existingShortURL, err := store.SaveURL(shortURL, url)
+	existingShortURL, err := store.SaveURL(shortURL, url, userID)
 	if err != nil {
 		if err.Error() == "conflict" {
 			w.WriteHeader(http.StatusConflict)
@@ -87,6 +108,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth.SetAuthCookie(w, userID)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL)))
 }
@@ -95,6 +117,26 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	userID, exists, err := auth.GetAuthCookie(r)
+	if !exists || err != nil {
+		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
+		logger.Log.Info("start processing of creating cookie")
+		newUserID, err := auth.GenerateUserID()
+		if err != nil {
+			logger.Log.Info("error of generating user id")
+			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
+			return
+		}
+		userID = newUserID
+		auth.SetAuthCookie(w, newUserID)
+		logger.Log.Info("finished processing of creating cookie")
+	}
+
+	if userID == "" {
+		logger.Log.Error("got empty user id in cookie, skip processing")
+		http.Error(w, "empty user id", http.StatusUnauthorized)
 	}
 
 	var req models.Request
@@ -109,13 +151,13 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := createShortURL(8)
+	shortURL, err := generateShortURL(8)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	existingShortURL, err := store.SaveURL(shortURL, req.RequestURL)
+	existingShortURL, err := store.SaveURL(shortURL, req.RequestURL, userID)
 	if err != nil {
 		if err.Error() == "conflict" {
 			resp := models.Response{
@@ -141,6 +183,7 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseAddress: fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
 	}
 
+	auth.SetAuthCookie(w, userID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
@@ -159,6 +202,26 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID, exists, err := auth.GetAuthCookie(r)
+	if !exists || err != nil {
+		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
+		logger.Log.Info("start processing of creating cookie")
+		newUserID, err := auth.GenerateUserID()
+		if err != nil {
+			logger.Log.Info("error of generating user id")
+			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
+			return
+		}
+		userID = newUserID
+		auth.SetAuthCookie(w, newUserID)
+		logger.Log.Info("finished processing of creating cookie")
+	}
+
+	if userID == "" {
+		logger.Log.Error("got empty user id in cookie, skip processing")
+		http.Error(w, "empty user id", http.StatusUnauthorized)
+	}
+
 	shortURL := r.URL.Path[1:]
 	if len(shortURL) == 0 {
 		logger.Log.Info("requested url is empty")
@@ -173,6 +236,7 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth.SetAuthCookie(w, userID)
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }
 
@@ -194,6 +258,26 @@ func PingDBHandler(w http.ResponseWriter, r *http.Request) {
 func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 	var records []models.AddNewURLRecord
 	var responses []models.BatchResponse
+
+	userID, exists, err := auth.GetAuthCookie(r)
+	if !exists || err != nil {
+		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
+		logger.Log.Info("start processing of creating cookie")
+		newUserID, err := auth.GenerateUserID()
+		if err != nil {
+			logger.Log.Info("error of generating user id")
+			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
+			return
+		}
+		userID = newUserID
+		auth.SetAuthCookie(w, newUserID)
+		logger.Log.Info("finished processing of creating cookie")
+	}
+
+	if userID == "" {
+		logger.Log.Error("got empty user id in cookie, skip processing")
+		http.Error(w, "empty user id", http.StatusUnauthorized)
+	}
 
 	if err := json.NewDecoder(r.Body).Decode(&records); err != nil {
 		logger.Log.Error("Error decoding request body: ", zap.Error(err))
@@ -225,14 +309,14 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			shortURL, err := createShortURL(8)
+			shortURL, err := generateShortURL(8)
 			if err != nil {
 				logger.Log.Error("Error creating short URL: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			if err := store.SaveBatchTransaction(tx, shortURL, record.OriginalURL); err != nil {
+			if err := store.SaveBatchTransaction(tx, shortURL, record.OriginalURL, userID); err != nil {
 				logger.Log.Error("Error saving URL in transaction: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -257,14 +341,14 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			shortURL, err := createShortURL(8)
+			shortURL, err := generateShortURL(8)
 			if err != nil {
 				logger.Log.Error("Error creating short URL: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			if _, err := store.SaveURL(shortURL, record.OriginalURL); err != nil {
+			if _, err := store.SaveURL(shortURL, record.OriginalURL, userID); err != nil {
 				logger.Log.Error("Error saving URL: ", zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -277,9 +361,57 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	auth.SetAuthCookie(w, userID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
 	if err := json.NewEncoder(w).Encode(responses); err != nil {
 		logger.Log.Error("Error encoding response: ", zap.Error(err))
 	}
+}
+
+func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		logger.Log.Info("incoming HTTP request isn't get")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	userID, exists, err := auth.GetAuthCookie(r)
+	if !exists || err != nil {
+		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
+		logger.Log.Info("start processing of creating cookie")
+		newUserID, err := auth.GenerateUserID()
+		if err != nil {
+			logger.Log.Info("error of generating user id")
+			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
+			return
+		}
+		userID = newUserID
+		auth.SetAuthCookie(w, newUserID)
+		logger.Log.Info("finished processing of creating cookie")
+	}
+
+	if userID == "" {
+		logger.Log.Error("got empty user id in cookie, skip processing")
+		http.Error(w, "empty user id", http.StatusUnauthorized)
+	}
+
+	records, err := store.GetAllUserURLs(userID)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Если записей нет, возвращаем 204 No Content
+	if len(records) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Отправляем записи в формате JSON
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Encoding", "gzip")
+	json.NewEncoder(w).Encode(records)
+	w.WriteHeader(http.StatusOK)
 }
