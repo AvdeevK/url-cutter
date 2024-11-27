@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/AvdeevK/url-cutter.git/internal/models"
+	"log"
 )
 
 type PostgresStorage struct {
@@ -91,7 +92,11 @@ func (db *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfUR
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil {
+			log.Printf("Error closing rows: %v", cerr)
+		}
+	}()
 
 	var records []models.BasePairsOfURLsResponse
 	for rows.Next() {
