@@ -92,6 +92,11 @@ func (db *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfUR
 	if err != nil {
 		return nil, err
 	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	defer func() {
 		if cerr := rows.Close(); cerr != nil {
 			log.Printf("Error closing rows: %v", cerr)
