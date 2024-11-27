@@ -85,9 +85,9 @@ func (db *PostgresStorage) SaveBatch(records []models.AddNewURLRecord) error {
 	return errors.New("not implemented")
 }
 
-func (ps *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
+func (db *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
 	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1`
-	rows, err := ps.db.Query(query, userID)
+	rows, err := db.db.Query(query, userID)
 	if err != nil {
 		return nil, err
 	}

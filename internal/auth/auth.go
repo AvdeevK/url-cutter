@@ -11,8 +11,8 @@ import (
 )
 
 const cookieName = "bearer"
-const TOKEN_EXP = time.Hour * 3
-const SECRET_KEY = "supersecretkey"
+const tokenExp = time.Hour * 3
+const secretKey = "supersecretkey"
 
 // Взято из примера урока, структура будет из одного поля.
 type Claims struct {
@@ -34,14 +34,14 @@ func SetAuthCookie(w http.ResponseWriter, userID string) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			// когда создан токен
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TOKEN_EXP)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExp)),
 		},
 		// собственное утверждение
 		UserID: userID,
 	})
 
 	// создаём строку токена
-	tokenString, err := token.SignedString([]byte(SECRET_KEY))
+	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return errors.New("token signing error")
 	}
@@ -72,7 +72,7 @@ func GetAuthCookie(r *http.Request) (string, bool, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(SECRET_KEY), nil
+			return []byte(secretKey), nil
 		})
 
 	if err != nil {
