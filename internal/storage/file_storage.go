@@ -14,7 +14,7 @@ import (
 
 type FileStorage struct {
 	filePath    string
-	urls        map[string]string
+	urls        map[string][]string
 	storageName string
 }
 
@@ -30,23 +30,25 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	return fs, err
 }
 
-func (f *FileStorage) SaveURL(shortURL, originalURL string) (string, error) {
+func (f *FileStorage) SaveURL(shortURL, originalURL, userID string) (string, error) {
 	lastUUID += 1
 
 	record := models.AddNewURLRecord{
 		ID:          strconv.Itoa(lastUUID),
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
+		UserID:      userID,
 	}
 
 	return "", f.saveToFile(record)
 }
 
 func (f *FileStorage) GetOriginalURL(shortURL string) (string, error) {
-	originalURL, exists := f.urls[shortURL]
+	attributes, exists := f.urls[shortURL]
 	if !exists {
 		return "", errors.New("URL not found")
 	}
+	originalURL := attributes[0]
 	return originalURL, nil
 }
 
@@ -72,7 +74,8 @@ func (f *FileStorage) LoadURLsFromFile() error {
 		} else if err != nil {
 			return err
 		}
-		f.urls[record.ShortURL] = record.OriginalURL
+		attributes := &[]string{record.OriginalURL, record.UserID}
+		f.urls[record.ShortURL] = *attributes
 		lastUUID, err = strconv.Atoi(record.ID)
 		if err != nil {
 			logger.Log.Info("can't to get last uuid")
@@ -94,7 +97,8 @@ func (f *FileStorage) saveToFile(newURL models.AddNewURLRecord) error {
 		return err
 	}
 
-	f.urls[newURL.ShortURL] = newURL.OriginalURL
+	attributes := &[]string{newURL.OriginalURL, newURL.UserID}
+	f.urls[newURL.ShortURL] = *attributes
 	return nil
 }
 
@@ -111,6 +115,10 @@ func (f *FileStorage) SaveBatch(records []models.AddNewURLRecord) error {
 	return nil
 }
 
-func (f *FileStorage) SaveBatchTransaction(tx *sql.Tx, shortURL string, originalURL string) error {
+func (f *FileStorage) SaveBatchTransaction(tx *sql.Tx, shortURL, originalURL, userID string) error {
 	return errors.New("not implemented")
+}
+
+func (f *FileStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
+	return nil, errors.New("not implemented")
 }

@@ -12,6 +12,7 @@ type AddNewURLRecord struct {
 	ID          string `json:"correlation_id"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	UserID      string `json:"user_id"`
 }
 
 type BatchRequest struct {
@@ -24,4 +25,9 @@ type BatchResponse struct {
 	ShortURL      string `json:"short_url"`
 }
 
-var PairsOfURLs = make(map[string]string)
+type BasePairsOfURLsResponse struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+var PairsOfURLs = make(map[string][]string)
