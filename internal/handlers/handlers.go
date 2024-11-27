@@ -444,7 +444,12 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Если записей нет, возвращаем 204 No Content
+	for _, record := range records {
+		record.ShortURL = fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, record.ShortURL)
+		logger.Log.Info("finished processing of creating URL: ", zap.Any("record", record))
+	}
+
+	// Если записей нет, возвращаем 204 No Content, но в автотестах ошибка, непонятно, почему тут 401.
 	if len(records) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -452,6 +457,6 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Отправляем записи в формате JSON
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(records)
+	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusOK)
 }
