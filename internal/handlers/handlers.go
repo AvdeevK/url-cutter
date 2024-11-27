@@ -457,6 +457,5 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Отправляем записи в формате JSON
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusOK)
 }
