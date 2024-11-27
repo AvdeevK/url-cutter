@@ -444,9 +444,9 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, record := range records {
-		record.ShortURL = fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, record.ShortURL)
-		logger.Log.Info("finished processing of creating URL: ", zap.Any("record", record))
+	for i := range records {
+		records[i].ShortURL = fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, records[i].ShortURL)
+		logger.Log.Info("finished processing of creating URL: ", zap.Any("record", records[i]))
 	}
 
 	// Если записей нет, возвращаем 204 No Content, но в автотестах ошибка, непонятно, почему тут 401.
