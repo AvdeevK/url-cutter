@@ -446,13 +446,12 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Если записей нет, возвращаем 204 No Content
 	if len(records) == 0 {
-		w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	// Отправляем записи в формате JSON
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Content-Encoding", "gzip")
 	json.NewEncoder(w).Encode(records)
 	w.WriteHeader(http.StatusOK)
 }
