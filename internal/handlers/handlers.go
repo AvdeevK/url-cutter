@@ -74,13 +74,18 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userID = newUserID
-		auth.SetAuthCookie(w, newUserID)
+		err = auth.SetAuthCookie(w, newUserID)
+		if err != nil {
+			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+			return
+		}
 		logger.Log.Info("finished processing of creating cookie")
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
+		return
 	}
 
 	body, err := io.ReadAll(r.Body)
@@ -108,7 +113,11 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth.SetAuthCookie(w, userID)
+	err = auth.SetAuthCookie(w, userID)
+	if err != nil {
+		http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL)))
 }
@@ -130,13 +139,18 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userID = newUserID
-		auth.SetAuthCookie(w, newUserID)
+		err = auth.SetAuthCookie(w, newUserID)
+		if err != nil {
+			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+			return
+		}
 		logger.Log.Info("finished processing of creating cookie")
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
+		return
 	}
 
 	var req models.Request
@@ -183,7 +197,11 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseAddress: fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
 	}
 
-	auth.SetAuthCookie(w, userID)
+	err = auth.SetAuthCookie(w, userID)
+	if err != nil {
+		http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
@@ -213,13 +231,18 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userID = newUserID
-		auth.SetAuthCookie(w, newUserID)
+		err = auth.SetAuthCookie(w, newUserID)
+		if err != nil {
+			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+			return
+		}
 		logger.Log.Info("finished processing of creating cookie")
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
+		return
 	}
 
 	shortURL := r.URL.Path[1:]
@@ -236,7 +259,11 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth.SetAuthCookie(w, userID)
+	err = auth.SetAuthCookie(w, userID)
+	if err != nil {
+		http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }
 
@@ -270,13 +297,18 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userID = newUserID
-		auth.SetAuthCookie(w, newUserID)
+		err = auth.SetAuthCookie(w, newUserID)
+		if err != nil {
+			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+			return
+		}
 		logger.Log.Info("finished processing of creating cookie")
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
+		return
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&records); err != nil {
@@ -361,7 +393,11 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	auth.SetAuthCookie(w, userID)
+	err = auth.SetAuthCookie(w, userID)
+	if err != nil {
+		http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
@@ -388,13 +424,18 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userID = newUserID
-		auth.SetAuthCookie(w, newUserID)
+		err = auth.SetAuthCookie(w, newUserID)
+		if err != nil {
+			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+			return
+		}
 		logger.Log.Info("finished processing of creating cookie")
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
+		return
 	}
 
 	records, err := store.GetAllUserURLs(userID)
