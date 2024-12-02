@@ -52,6 +52,7 @@ func run(r chi.Router) error {
 	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostJSONHandler))))
 	r.Post("/api/shorten/batch", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostBatchURLHandler))))
 	r.Get("/api/user/urls", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.GetAllUserURLsHandler))))
+	r.Delete("/api/user/urls", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.DeleteUserURLsHandler))))
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 

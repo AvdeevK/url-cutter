@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/AvdeevK/url-cutter.git/internal/models"
+	"github.com/lib/pq"
 	"log"
 )
 
@@ -50,13 +51,16 @@ func (db *PostgresStorage) SaveBatchTransaction(
 	return err
 }
 
-func (db *PostgresStorage) GetOriginalURL(shortURL string) (string, error) {
-	var originalURL string
-	err := db.db.QueryRow("SELECT original_url FROM urls WHERE short_url = $1", shortURL).Scan(&originalURL)
+func (db *PostgresStorage) GetOriginalURL(shortURL string) (string, bool, error) {
+	var (
+		originalURL string
+		isDeleted   bool
+	)
+	err := db.db.QueryRow("SELECT original_url, is_deleted FROM urls WHERE short_url = $1", shortURL).Scan(&originalURL, &isDeleted)
 	if err == sql.ErrNoRows {
-		return "", errors.New("URL not found")
+		return "", false, errors.New("URL not found")
 	}
-	return originalURL, nil
+	return originalURL, isDeleted, nil
 }
 
 func (db *PostgresStorage) GetShortURLByOriginal(originalURL string) (string, error) {
@@ -113,4 +117,14 @@ func (db *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfUR
 	}
 
 	return records, nil
+}
+
+func (db *PostgresStorage) MarkURLsAsDeleted(userID string, urlIDs []string) error {
+	query := `
+		UPDATE urls
+		SET is_deleted = TRUE
+		WHERE user_id = $1 AND short_url = ANY($2);
+	`
+	_, err := db.db.Exec(query, userID, pq.Array(urlIDs))
+	return err
 }

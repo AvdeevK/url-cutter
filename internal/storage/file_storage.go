@@ -43,13 +43,13 @@ func (f *FileStorage) SaveURL(shortURL, originalURL, userID string) (string, err
 	return "", f.saveToFile(record)
 }
 
-func (f *FileStorage) GetOriginalURL(shortURL string) (string, error) {
+func (f *FileStorage) GetOriginalURL(shortURL string) (string, bool, error) {
 	attributes, exists := f.urls[shortURL]
 	if !exists {
-		return "", errors.New("URL not found")
+		return "", false, errors.New("URL not found")
 	}
 	originalURL := attributes[0]
-	return originalURL, nil
+	return originalURL, false, nil
 }
 
 func (f *FileStorage) Ping() error {
@@ -121,4 +121,8 @@ func (f *FileStorage) SaveBatchTransaction(tx *sql.Tx, shortURL, originalURL, us
 
 func (f *FileStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (f *FileStorage) MarkURLsAsDeleted(userID string, urlIDs []string) error {
+	return errors.New("not implemented")
 }

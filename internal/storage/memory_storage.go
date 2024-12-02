@@ -24,13 +24,13 @@ func (m *MemoryStorage) SaveURL(shortURL, originalURL string, userID string) (st
 	return "", nil
 }
 
-func (m *MemoryStorage) GetOriginalURL(shortURL string) (string, error) {
+func (m *MemoryStorage) GetOriginalURL(shortURL string) (string, bool, error) {
 	attributes, exists := m.urls[shortURL]
 	if !exists {
-		return "", errors.New("URL not found")
+		return "", false, errors.New("URL not found")
 	}
 	originalURL := attributes[0]
-	return originalURL, nil
+	return originalURL, false, nil
 }
 
 func (m *MemoryStorage) Ping() error {
@@ -55,4 +55,8 @@ func (m *MemoryStorage) SaveBatchTransaction(tx *sql.Tx, shortURL, originalURL, 
 
 func (m *MemoryStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (m *MemoryStorage) MarkURLsAsDeleted(userID string, urlIDs []string) error {
+	return errors.New("not implemented")
 }

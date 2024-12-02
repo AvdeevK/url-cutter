@@ -33,7 +33,8 @@ func CreateTable(db *sql.DB) error {
 		id SERIAL PRIMARY KEY,
 		short_url VARCHAR(255) NOT NULL UNIQUE,
 		original_url TEXT NOT NULL,
-	    user_id TEXT NOT NULL
+	    user_id TEXT NOT NULL,
+	    is_deleted BOOLEAN DEFAULT false
 	);
 	CREATE UNIQUE INDEX IF NOT EXISTS unique_original_url ON urls (original_url);
 	`
@@ -252,10 +253,15 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originalURL, err := store.GetOriginalURL(shortURL)
+	originalURL, isDeleted, err := store.GetOriginalURL(shortURL)
 	if err != nil {
 		logger.Log.Info(fmt.Sprintf("requested %s url, which isn't found", shortURL))
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if isDeleted {
+		w.WriteHeader(http.StatusGone)
 		return
 	}
 
@@ -459,4 +465,57 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(records)
+}
+
+func DeleteUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, exists, err := auth.GetAuthCookie(r)
+	if !exists || err != nil {
+		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
+		logger.Log.Info("start processing of creating cookie")
+		newUserID, err := auth.GenerateUserID()
+		if err != nil {
+			logger.Log.Info("error of generating user id")
+			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
+			return
+		}
+		userID = newUserID
+		err = auth.SetAuthCookie(w, newUserID)
+		if err != nil {
+			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
+			return
+		}
+		logger.Log.Info("finished processing of creating cookie")
+	}
+
+	if userID == "" {
+		logger.Log.Error("got empty user id in cookie, skip processing")
+		http.Error(w, "empty user id", http.StatusUnauthorized)
+		return
+	}
+
+	var urlIDs []string
+	if err := json.NewDecoder(r.Body).Decode(&urlIDs); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if len(urlIDs) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	go func(w http.ResponseWriter) {
+		if err := store.MarkURLsAsDeleted(userID, urlIDs); err != nil {
+			logger.Log.Error("Failed to mark URLs as deleted", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}(w)
+
+	w.WriteHeader(http.StatusAccepted)
 }
