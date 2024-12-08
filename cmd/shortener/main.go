@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
+	"github.com/AvdeevK/url-cutter.git/internal/postgres"
 	"github.com/AvdeevK/url-cutter.git/internal/storage"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/AvdeevK/url-cutter.git/internal/config"
@@ -51,7 +54,8 @@ func run(r chi.Router) error {
 	r.Get("/{link}", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.GetURLHandler))))
 	r.Post("/api/shorten", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostJSONHandler))))
 	r.Post("/api/shorten/batch", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.PostBatchURLHandler))))
-
+	r.Get("/api/user/urls", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.GetAllUserURLsHandler))))
+	r.Delete("/api/user/urls", logger.RequestLogger(logger.ResponseLogger(gzipMiddleware(handlers.DeleteUserURLsHandler))))
 	return http.ListenAndServe(config.Configs.RequestAddress, r)
 }
 
@@ -78,7 +82,9 @@ func main() {
 		logger.Log.Info("Connection to DB with", zap.String("address", config.Configs.DatabaseAddress))
 
 		// Создание таблицы
-		if err := handlers.CreateTable(handlers.DB); err != nil {
+		_, b, _, _ := runtime.Caller(0)
+		migrationsDir := filepath.Join(filepath.Dir(b), "../../internal/postgres/migrations")
+		if err := postgres.RunMigrations(handlers.DB, migrationsDir); err != nil {
 			log.Fatalf("Failed to create table: %v", err)
 		}
 	} else if config.Configs.FileStoragePath != "" {
