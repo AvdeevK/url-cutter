@@ -51,16 +51,16 @@ func (db *PostgresStorage) SaveBatchTransaction(
 	return err
 }
 
-func (db *PostgresStorage) GetOriginalURL(shortURL string) (string, bool, error) {
+func (db *PostgresStorage) GetOriginalURL(shortURL string) models.OriginalURLSelectionResult {
 	var (
 		originalURL string
 		isDeleted   bool
 	)
 	err := db.db.QueryRow("SELECT original_url, is_deleted FROM urls WHERE short_url = $1", shortURL).Scan(&originalURL, &isDeleted)
 	if err == sql.ErrNoRows {
-		return "", false, errors.New("URL not found")
+		return models.OriginalURLSelectionResult{"", false, errors.New("not found")}
 	}
-	return originalURL, isDeleted, nil
+	return models.OriginalURLSelectionResult{originalURL, isDeleted, nil}
 }
 
 func (db *PostgresStorage) GetShortURLByOriginal(originalURL string) (string, error) {

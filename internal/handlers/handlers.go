@@ -213,14 +213,14 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originalURL, isDeleted, err := store.GetOriginalURL(shortURL)
-	if err != nil {
+	selectionResult := store.GetOriginalURL(shortURL)
+	if selectionResult.Error != nil {
 		logger.Log.Info(fmt.Sprintf("requested %s url, which isn't found", shortURL))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if isDeleted {
+	if selectionResult.IsDeleted {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
@@ -230,7 +230,7 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unable to set cookie", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, selectionResult.OriginalURL, http.StatusTemporaryRedirect)
 }
 
 func PingDBHandler(w http.ResponseWriter, r *http.Request) {

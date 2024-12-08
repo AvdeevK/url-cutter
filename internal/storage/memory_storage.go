@@ -24,13 +24,13 @@ func (m *MemoryStorage) SaveURL(shortURL, originalURL string, userID string) (st
 	return "", nil
 }
 
-func (m *MemoryStorage) GetOriginalURL(shortURL string) (string, bool, error) {
+func (m *MemoryStorage) GetOriginalURL(shortURL string) models.OriginalURLSelectionResult {
 	attributes, exists := m.urls[shortURL]
 	if !exists {
-		return "", false, errors.New("URL not found")
+		return models.OriginalURLSelectionResult{"", false, errors.New("URL not found")}
 	}
 	originalURL := attributes[0]
-	return originalURL, false, nil
+	return models.OriginalURLSelectionResult{originalURL, false, nil}
 }
 
 func (m *MemoryStorage) Ping() error {

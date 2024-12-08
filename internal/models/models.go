@@ -32,3 +32,9 @@ type BasePairsOfURLsResponse struct {
 }
 
 var PairsOfURLs = make(map[string][]string)
+
+type OriginalURLSelectionResult struct {
+	OriginalURL string
+	IsDeleted   bool
+	Error       error
+}

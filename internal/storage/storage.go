@@ -7,7 +7,7 @@ import (
 
 type Storage interface {
 	SaveURL(shortURL, originalURL, userID string) (string, error)
-	GetOriginalURL(shortURL string) (string, bool, error)
+	GetOriginalURL(shortURL string) models.OriginalURLSelectionResult
 	Ping() error
 	SaveBatch([]models.AddNewURLRecord) error
 	SaveBatchTransaction(*sql.Tx, string, string, string) error
