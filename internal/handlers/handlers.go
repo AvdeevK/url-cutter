@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/AvdeevK/url-cutter.git/internal/auth"
 	"github.com/AvdeevK/url-cutter.git/internal/config"
@@ -55,6 +56,21 @@ func generateShortURL(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
 }
 
+func ValidateAndSetAuthCookie(w http.ResponseWriter, r *http.Request) (string, error) {
+	userID, exists, err := auth.GetAuthCookie(r)
+	if !exists || err != nil {
+		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
+		logger.Log.Info("start process of creating cookie")
+		newUserID, err := auth.GenerateUserID()
+		if err != nil {
+			logger.Log.Info("error of generating user id")
+			return "", errors.New("unable to generate user id")
+		}
+		userID = newUserID
+	}
+	return userID, nil
+}
+
 func NotAllowedMethodsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
@@ -64,29 +80,18 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	userID, exists, err := auth.GetAuthCookie(r)
-	if !exists || err != nil {
-		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
-		logger.Log.Info("start processing of creating cookie")
-		newUserID, err := auth.GenerateUserID()
-		if err != nil {
-			logger.Log.Info("error of generating user id")
-			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
-			return
-		}
-		userID = newUserID
-		err = auth.SetAuthCookie(w, newUserID)
-		if err != nil {
-			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
-			return
-		}
-		logger.Log.Info("finished processing of creating cookie")
+
+	//Получение userID и проверка на ошибку
+	logger.Log.Info("start processing of creating cookie")
+	userID, err := ValidateAndSetAuthCookie(w, r)
+	logger.Log.Info("finish processing of creating cookie")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
-		return
 	}
 
 	body, err := io.ReadAll(r.Body)
@@ -129,29 +134,17 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, exists, err := auth.GetAuthCookie(r)
-	if !exists || err != nil {
-		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
-		logger.Log.Info("start processing of creating cookie")
-		newUserID, err := auth.GenerateUserID()
-		if err != nil {
-			logger.Log.Info("error of generating user id")
-			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
-			return
-		}
-		userID = newUserID
-		err = auth.SetAuthCookie(w, newUserID)
-		if err != nil {
-			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
-			return
-		}
-		logger.Log.Info("finished processing of creating cookie")
+	//Получение userID и проверка на ошибку
+	logger.Log.Info("get auth cookie from request")
+	userID, err := ValidateAndSetAuthCookie(w, r)
+	logger.Log.Info("finish getting auth cookie")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
-		return
 	}
 
 	var req models.Request
@@ -214,36 +207,23 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetURLHandler(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != http.MethodGet {
 		logger.Log.Info("incoming HTTP request isn't get")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	userID, exists, err := auth.GetAuthCookie(r)
-	if !exists || err != nil {
-		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
-		logger.Log.Info("start processing of creating cookie")
-		newUserID, err := auth.GenerateUserID()
-		if err != nil {
-			logger.Log.Info("error of generating user id")
-			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
-			return
-		}
-		userID = newUserID
-		err = auth.SetAuthCookie(w, newUserID)
-		if err != nil {
-			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
-			return
-		}
-		logger.Log.Info("finished processing of creating cookie")
+	//Получение userID и проверка на ошибку
+	logger.Log.Info("get auth cookie from request")
+	userID, err := ValidateAndSetAuthCookie(w, r)
+	logger.Log.Info("finish getting auth cookie")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
-		return
 	}
 
 	shortURL := r.URL.Path[1:]
@@ -292,29 +272,17 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 	var records []models.AddNewURLRecord
 	var responses []models.BatchResponse
 
-	userID, exists, err := auth.GetAuthCookie(r)
-	if !exists || err != nil {
-		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
-		logger.Log.Info("start processing of creating cookie")
-		newUserID, err := auth.GenerateUserID()
-		if err != nil {
-			logger.Log.Info("error of generating user id")
-			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
-			return
-		}
-		userID = newUserID
-		err = auth.SetAuthCookie(w, newUserID)
-		if err != nil {
-			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
-			return
-		}
-		logger.Log.Info("finished processing of creating cookie")
+	//Получение userID и проверка на ошибку
+	logger.Log.Info("get auth cookie from request")
+	userID, err := ValidateAndSetAuthCookie(w, r)
+	logger.Log.Info("finish getting auth cookie")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
-		return
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&records); err != nil {
@@ -419,29 +387,18 @@ func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, exists, err := auth.GetAuthCookie(r)
-	if !exists || err != nil {
-		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
-		logger.Log.Info("start processing of creating cookie")
-		newUserID, err := auth.GenerateUserID()
-		if err != nil {
-			logger.Log.Info("error of generating user id")
-			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
-			return
-		}
-		userID = newUserID
-		err = auth.SetAuthCookie(w, newUserID)
-		if err != nil {
-			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
-			return
-		}
-		logger.Log.Info("finished processing of creating cookie")
+	//Получение userID и проверка на ошибку
+	logger.Log.Info("get auth cookie from request")
+	userID, err := ValidateAndSetAuthCookie(w, r)
+	logger.Log.Info("finish getting auth cookie")
+	if err != nil {
+		logger.Log.Info(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
-		return
 	}
 
 	records, err := store.GetAllUserURLs(userID)
@@ -473,29 +430,17 @@ func DeleteUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, exists, err := auth.GetAuthCookie(r)
-	if !exists || err != nil {
-		logger.Log.Warn(fmt.Sprintf("error getting auth cookie or: %v", err))
-		logger.Log.Info("start processing of creating cookie")
-		newUserID, err := auth.GenerateUserID()
-		if err != nil {
-			logger.Log.Info("error of generating user id")
-			http.Error(w, "unable to generate user id", http.StatusInternalServerError)
-			return
-		}
-		userID = newUserID
-		err = auth.SetAuthCookie(w, newUserID)
-		if err != nil {
-			http.Error(w, "unable to set cookie", http.StatusInternalServerError)
-			return
-		}
-		logger.Log.Info("finished processing of creating cookie")
+	//Получение userID и проверка на ошибку
+	logger.Log.Info("get auth cookie from request")
+	userID, err := ValidateAndSetAuthCookie(w, r)
+	logger.Log.Info("finish getting auth cookie")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if userID == "" {
 		logger.Log.Error("got empty user id in cookie, skip processing")
 		http.Error(w, "empty user id", http.StatusUnauthorized)
-		return
 	}
 
 	var urlIDs []string

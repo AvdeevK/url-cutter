@@ -7,12 +7,21 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 	"net/http"
+	"os"
 	"time"
 )
 
 const cookieName = "bearer"
 const tokenExp = time.Hour * 3
-const secretKey = "supersecretkey"
+
+var secretKey string
+
+func init() {
+	secretKey = os.Getenv("SECRET_KEY")
+	if secretKey == "" {
+		panic("SECRET_KEY environment variable is not set")
+	}
+}
 
 // Взято из примера урока, структура будет из одного поля.
 type Claims struct {
@@ -29,7 +38,6 @@ func GenerateUserID() (string, error) {
 }
 
 func SetAuthCookie(w http.ResponseWriter, userID string) error {
-
 	// создаём новый токен с алгоритмом подписи HS256 и утверждениями — Claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -51,7 +59,7 @@ func SetAuthCookie(w http.ResponseWriter, userID string) error {
 		Value:    tokenString,
 		HttpOnly: true,
 		Path:     "/",
-		Expires:  time.Now().Add(30 * 24 * time.Hour),
+		Expires:  time.Now().Add(tokenExp),
 	}
 	http.SetCookie(w, cookie)
 
@@ -81,6 +89,10 @@ func GetAuthCookie(r *http.Request) (string, bool, error) {
 
 	if !token.Valid {
 		return "", true, errors.New("invalid token")
+	}
+
+	if claims.ExpiresAt != nil && time.Now().After(claims.ExpiresAt.Time) {
+		return "", true, errors.New("token has expired")
 	}
 
 	//Комбинация токена, который существует, парсинг без ошибок.
