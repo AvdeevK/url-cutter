@@ -97,6 +97,11 @@ func (db *PostgresStorage) SaveBatch(records []models.AddNewURLRecord) error {
 func (db *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
 	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1`
 	rows, err := db.db.Query(query, userID)
+	defer func() {
+		if cerr := rows.Close(); cerr != nil {
+			log.Printf("Error closing rows: %v", cerr)
+		}
+	}()
 	if err != nil {
 		return nil, err
 	}
@@ -104,12 +109,6 @@ func (db *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfUR
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
-	defer func() {
-		if cerr := rows.Close(); cerr != nil {
-			log.Printf("Error closing rows: %v", cerr)
-		}
-	}()
 
 	var records []models.BasePairsOfURLsResponse
 	for rows.Next() {
