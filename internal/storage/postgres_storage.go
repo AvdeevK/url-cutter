@@ -40,17 +40,6 @@ func (db *PostgresStorage) SaveURL(shortURL, originalURL, userID string) (string
 	return existingShortURL, nil
 }
 
-func (db *PostgresStorage) SaveBatchTransaction(
-	tx *sql.Tx, shortURL string, originalURL string, userID string) error {
-	if tx == nil {
-		return errors.New("transaction is nil")
-	}
-
-	query := "INSERT INTO urls (user_id, short_url, original_url) VALUES ($1, $2, $3)"
-	_, err := tx.Exec(query, userID, shortURL, originalURL)
-	return err
-}
-
 func (db *PostgresStorage) GetOriginalURL(shortURL string) models.OriginalURLSelectionResult {
 	var (
 		originalURL string
@@ -95,7 +84,14 @@ func (db *PostgresStorage) GetStorageName() (string, error) {
 }
 
 func (db *PostgresStorage) SaveBatch(records []models.AddNewURLRecord) error {
-	return errors.New("not implemented")
+	for _, record := range records {
+		query := "INSERT INTO urls (user_id, short_url, original_url) VALUES ($1, $2, $3)"
+		_, err := db.db.Exec(query, record.UserID, record.ShortURL, record.OriginalURL)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (db *PostgresStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {

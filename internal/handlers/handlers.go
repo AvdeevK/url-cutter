@@ -277,74 +277,32 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storageType, _ := store.GetStorageName()
+	for idx := 0; idx < len(records); idx++ {
+		if records[idx].OriginalURL == "" {
+			logger.Log.Warn("Original URL is empty for correlation ID")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	if storageType == "postgres storage" {
-		tx, err := DB.Begin()
+		records[idx].ShortURL, err = generateShortURL(8)
 		if err != nil {
-			logger.Log.Error("Error starting transaction: ", zap.Error(err))
+			logger.Log.Error("Error creating short URL: ", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		defer tx.Rollback()
 
-		for _, record := range records {
-			if record.OriginalURL == "" {
-				logger.Log.Warn("Original URL is empty for correlation ID")
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
+		records[idx].UserID = userID
 
-			shortURL, err := generateShortURL(8)
-			if err != nil {
-				logger.Log.Error("Error creating short URL: ", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		responses = append(responses, models.BatchResponse{
+			CorrelationID: records[idx].ID,
+			ShortURL:      fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, records[idx].ShortURL),
+		})
+	}
 
-			if err := store.SaveBatchTransaction(tx, shortURL, record.OriginalURL, userID); err != nil {
-				logger.Log.Error("Error saving URL in transaction: ", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			responses = append(responses, models.BatchResponse{
-				CorrelationID: record.ID,
-				ShortURL:      fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
-			})
-		}
-
-		if err := tx.Commit(); err != nil {
-			logger.Log.Error("Error committing transaction: ", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	} else {
-		for _, record := range records {
-			if record.OriginalURL == "" {
-				logger.Log.Warn("Original URL is empty for correlation ID")
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			shortURL, err := generateShortURL(8)
-			if err != nil {
-				logger.Log.Error("Error creating short URL: ", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			if _, err := store.SaveURL(shortURL, record.OriginalURL, userID); err != nil {
-				logger.Log.Error("Error saving URL: ", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			responses = append(responses, models.BatchResponse{
-				CorrelationID: record.ID,
-				ShortURL:      fmt.Sprintf("%s/%s", config.Configs.ResponseAddress, shortURL),
-			})
-		}
+	if err := store.SaveBatch(records); err != nil {
+		logger.Log.Error("Error saving URL in transaction: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	err = auth.SetAuthCookie(w, userID)

@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"github.com/AvdeevK/url-cutter.git/internal/config"
@@ -104,8 +103,7 @@ func (f *FileStorage) saveToFile(newURL models.AddNewURLRecord) error {
 		return err
 	}
 
-	attributes := &[]string{newURL.OriginalURL, newURL.UserID}
-	f.urls[newURL.ShortURL] = *attributes
+	f.urls[newURL.ShortURL] = []string{newURL.OriginalURL, newURL.UserID}
 	return nil
 }
 
@@ -120,10 +118,6 @@ func (f *FileStorage) SaveBatch(records []models.AddNewURLRecord) error {
 		}
 	}
 	return nil
-}
-
-func (f *FileStorage) SaveBatchTransaction(tx *sql.Tx, shortURL, originalURL, userID string) error {
-	return errors.New("not implemented")
 }
 
 func (f *FileStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
