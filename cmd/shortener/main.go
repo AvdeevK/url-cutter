@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/AvdeevK/url-cutter.git/internal/handlers"
 	"github.com/AvdeevK/url-cutter.git/internal/logger"
+	"github.com/AvdeevK/url-cutter.git/internal/postgres"
 	"github.com/AvdeevK/url-cutter.git/internal/storage"
 	"go.uber.org/zap"
 	"log"
@@ -79,7 +80,7 @@ func main() {
 		logger.Log.Info("Connection to DB with", zap.String("address", config.Configs.DatabaseAddress))
 
 		// Создание таблицы
-		if err := handlers.CreateTable(handlers.DB); err != nil {
+		if err := postgres.RunMigrations(handlers.DB, "../../internal/postgres/migrations"); err != nil {
 			log.Fatalf("Failed to create table: %v", err)
 		}
 	} else if config.Configs.FileStoragePath != "" {

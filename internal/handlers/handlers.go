@@ -28,26 +28,6 @@ func InitializeStorage(s storage.Storage) {
 	store = s
 }
 
-func CreateTable(db *sql.DB) error {
-	query := `
-	CREATE TABLE IF NOT EXISTS urls (
-		id SERIAL PRIMARY KEY,
-		short_url VARCHAR(255) NOT NULL UNIQUE,
-		original_url TEXT NOT NULL,
-	    user_id TEXT NOT NULL,
-	    is_deleted BOOLEAN DEFAULT false
-	);
-	CREATE UNIQUE INDEX IF NOT EXISTS unique_original_url ON urls (original_url);
-	`
-
-	_, err := db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("error creating table or index: %w", err)
-	}
-
-	return nil
-}
-
 func generateShortURL(length int) (string, error) {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
