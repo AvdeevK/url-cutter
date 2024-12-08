@@ -13,7 +13,7 @@ import (
 
 type FileStorage struct {
 	filePath    string
-	urls        map[string][]string
+	urls        map[string]models.OriginalURLSelectionResult
 	storageName string
 }
 
@@ -49,13 +49,15 @@ func (f *FileStorage) GetOriginalURL(shortURL string) models.OriginalURLSelectio
 			OriginalURL: "",
 			IsDeleted:   false,
 			Error:       errors.New("URL not found"),
+			UserID:      "",
 		}
 	}
-	originalURL := attributes[0]
 	return models.OriginalURLSelectionResult{
-		OriginalURL: originalURL,
-		IsDeleted:   false,
-		Error:       nil}
+		OriginalURL: attributes.OriginalURL,
+		IsDeleted:   attributes.IsDeleted,
+		Error:       attributes.Error,
+		UserID:      attributes.UserID,
+	}
 }
 
 func (f *FileStorage) Ping() error {
@@ -80,8 +82,12 @@ func (f *FileStorage) LoadURLsFromFile() error {
 		} else if err != nil {
 			return err
 		}
-		attributes := &[]string{record.OriginalURL, record.UserID}
-		f.urls[record.ShortURL] = *attributes
+		f.urls[record.ShortURL] = models.OriginalURLSelectionResult{
+			OriginalURL: record.OriginalURL,
+			IsDeleted:   record.DeletedFlag,
+			Error:       nil,
+			UserID:      record.UserID,
+		}
 		lastUUID, err = strconv.Atoi(record.ID)
 		if err != nil {
 			logger.Log.Info("can't to get last uuid")
@@ -103,7 +109,12 @@ func (f *FileStorage) saveToFile(newURL models.AddNewURLRecord) error {
 		return err
 	}
 
-	f.urls[newURL.ShortURL] = []string{newURL.OriginalURL, newURL.UserID}
+	f.urls[newURL.ShortURL] = models.OriginalURLSelectionResult{
+		OriginalURL: newURL.OriginalURL,
+		IsDeleted:   newURL.DeletedFlag,
+		Error:       nil,
+		UserID:      newURL.UserID,
+	}
 	return nil
 }
 
@@ -121,9 +132,26 @@ func (f *FileStorage) SaveBatch(records []models.AddNewURLRecord) error {
 }
 
 func (f *FileStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
-	return nil, errors.New("not implemented")
+	result := make([]models.BasePairsOfURLsResponse, 0)
+	for key, val := range f.urls {
+		if val.UserID == userID && !val.IsDeleted {
+			result = append(result, models.BasePairsOfURLsResponse{
+				OriginalURL: val.OriginalURL,
+				ShortURL:    key,
+			})
+		}
+	}
+	return result, nil
 }
 
 func (f *FileStorage) MarkURLsAsDeleted(userID string, urlIDs []string) error {
-	return errors.New("not implemented")
+	for _, id := range urlIDs {
+		if url, exists := f.urls[id]; exists {
+			if url.UserID == userID {
+				url.IsDeleted = true
+				f.urls[id] = url
+			}
+		}
+	}
+	return nil
 }

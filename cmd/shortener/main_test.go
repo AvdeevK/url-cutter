@@ -116,9 +116,19 @@ func TestGetURLHandler(t *testing.T) {
 
 	handlers.InitializeStorage(storage.NewMemoryStorage())
 
-	models.PairsOfURLs["qMBUnCeI"] = []string{"http://yandex.ru", "weqe1"}
-	models.PairsOfURLs["hbflpNSd"] = []string{"http://wLlvfmtuXUcjYopEUIpsmFORoKlQyINZQwucmqLKzLzJM" +
-		"oAdIDWcMfAiJhDZZZlQbZWsolaiYEFUtQGZTBfvQGMZzbVaCWdOFLSZ.com"}
+	models.PairsOfURLs["qMBUnCeI"] = models.OriginalURLSelectionResult{
+		OriginalURL: "http://yandex.ru",
+		IsDeleted:   false,
+		Error:       nil,
+		UserID:      "lxM1u4yYR22ewAVJtXxtKw==",
+	}
+	models.PairsOfURLs["hbflpNSd"] = models.OriginalURLSelectionResult{
+		OriginalURL: "http://wLlvfmtuXUcjYopEUIpsmFORoKlQyINZQwucmqLKzLzJM" +
+			"oAdIDWcMfAiJhDZZZlQbZWsolaiYEFUtQGZTBfvQGMZzbVaCWdOFLSZ.com",
+		IsDeleted: false,
+		Error:     nil,
+		UserID:    "lxM1u4yYR22ewAVJtXxtKw==",
+	}
 
 	testCases := []struct {
 		testName       string
@@ -132,7 +142,7 @@ func TestGetURLHandler(t *testing.T) {
 			method:         http.MethodGet,
 			expectedCode:   http.StatusTemporaryRedirect,
 			path:           "/qMBUnCeI",
-			headerLocation: models.PairsOfURLs["qMBUnCeI"][0],
+			headerLocation: models.PairsOfURLs["qMBUnCeI"].OriginalURL,
 		},
 		{
 			testName:       "Тест с пустым телом запроса",
@@ -146,7 +156,7 @@ func TestGetURLHandler(t *testing.T) {
 			method:         http.MethodGet,
 			expectedCode:   http.StatusTemporaryRedirect,
 			path:           "/hbflpNSd",
-			headerLocation: models.PairsOfURLs["hbflpNSd"][0],
+			headerLocation: models.PairsOfURLs["hbflpNSd"].OriginalURL,
 		},
 		{
 			testName:       "Тест с несуществующим коротким  URL",

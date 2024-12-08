@@ -31,10 +31,11 @@ type BasePairsOfURLsResponse struct {
 	OriginalURL string `json:"original_url"`
 }
 
-var PairsOfURLs = make(map[string][]string)
+var PairsOfURLs = make(map[string]OriginalURLSelectionResult)
 
 type OriginalURLSelectionResult struct {
 	OriginalURL string
 	IsDeleted   bool
 	Error       error
+	UserID      string
 }

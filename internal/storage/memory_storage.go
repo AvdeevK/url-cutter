@@ -6,7 +6,7 @@ import (
 )
 
 type MemoryStorage struct {
-	urls        map[string][]string
+	urls        map[string]models.OriginalURLSelectionResult
 	storageName string
 }
 
@@ -18,8 +18,11 @@ func NewMemoryStorage() *MemoryStorage {
 }
 
 func (m *MemoryStorage) SaveURL(shortURL, originalURL string, userID string) (string, error) {
-	attributes := &[]string{originalURL, userID}
-	m.urls[shortURL] = *attributes
+	m.urls[shortURL] = models.OriginalURLSelectionResult{
+		OriginalURL: originalURL,
+		IsDeleted:   false,
+		UserID:      userID,
+	}
 	return "", nil
 }
 
@@ -30,13 +33,14 @@ func (m *MemoryStorage) GetOriginalURL(shortURL string) models.OriginalURLSelect
 			OriginalURL: "",
 			IsDeleted:   false,
 			Error:       errors.New("URL not found"),
+			UserID:      "",
 		}
 	}
-	originalURL := attributes[0]
 	return models.OriginalURLSelectionResult{
-		OriginalURL: originalURL,
-		IsDeleted:   false,
-		Error:       nil,
+		OriginalURL: attributes.OriginalURL,
+		IsDeleted:   attributes.IsDeleted,
+		Error:       attributes.Error,
+		UserID:      attributes.UserID,
 	}
 }
 
@@ -50,15 +54,36 @@ func (m *MemoryStorage) GetStorageName() (string, error) {
 
 func (m *MemoryStorage) SaveBatch(records []models.AddNewURLRecord) error {
 	for _, record := range records {
-		m.urls[record.ShortURL] = []string{record.ShortURL, record.UserID}
+		m.urls[record.ShortURL] = models.OriginalURLSelectionResult{
+			OriginalURL: record.OriginalURL,
+			IsDeleted:   record.DeletedFlag,
+			UserID:      record.UserID,
+		}
 	}
 	return nil
 }
 
 func (m *MemoryStorage) GetAllUserURLs(userID string) ([]models.BasePairsOfURLsResponse, error) {
-	return nil, errors.New("not implemented")
+	result := make([]models.BasePairsOfURLsResponse, 0)
+	for key, val := range m.urls {
+		if val.UserID == userID && !val.IsDeleted {
+			result = append(result, models.BasePairsOfURLsResponse{
+				OriginalURL: val.OriginalURL,
+				ShortURL:    key,
+			})
+		}
+	}
+	return result, nil
 }
 
 func (m *MemoryStorage) MarkURLsAsDeleted(userID string, urlIDs []string) error {
-	return errors.New("not implemented")
+	for _, id := range urlIDs {
+		if url, exists := m.urls[id]; exists {
+			if url.UserID == userID {
+				url.IsDeleted = true
+				m.urls[id] = url
+			}
+		}
+	}
+	return nil
 }
