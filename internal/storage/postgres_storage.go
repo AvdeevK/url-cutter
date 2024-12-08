@@ -58,9 +58,17 @@ func (db *PostgresStorage) GetOriginalURL(shortURL string) models.OriginalURLSel
 	)
 	err := db.db.QueryRow("SELECT original_url, is_deleted FROM urls WHERE short_url = $1", shortURL).Scan(&originalURL, &isDeleted)
 	if err == sql.ErrNoRows {
-		return models.OriginalURLSelectionResult{"", false, errors.New("not found")}
+		return models.OriginalURLSelectionResult{
+			OriginalURL: "",
+			IsDeleted:   false,
+			Error:       errors.New("not found"),
+		}
 	}
-	return models.OriginalURLSelectionResult{originalURL, isDeleted, nil}
+	return models.OriginalURLSelectionResult{
+		OriginalURL: originalURL,
+		IsDeleted:   isDeleted,
+		Error:       nil,
+	}
 }
 
 func (db *PostgresStorage) GetShortURLByOriginal(originalURL string) (string, error) {

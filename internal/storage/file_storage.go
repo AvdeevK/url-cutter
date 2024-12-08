@@ -46,10 +46,17 @@ func (f *FileStorage) SaveURL(shortURL, originalURL, userID string) (string, err
 func (f *FileStorage) GetOriginalURL(shortURL string) models.OriginalURLSelectionResult {
 	attributes, exists := f.urls[shortURL]
 	if !exists {
-		return models.OriginalURLSelectionResult{"", false, errors.New("URL not found")}
+		return models.OriginalURLSelectionResult{
+			OriginalURL: "",
+			IsDeleted:   false,
+			Error:       errors.New("URL not found"),
+		}
 	}
 	originalURL := attributes[0]
-	return models.OriginalURLSelectionResult{originalURL, false, nil}
+	return models.OriginalURLSelectionResult{
+		OriginalURL: originalURL,
+		IsDeleted:   false,
+		Error:       nil}
 }
 
 func (f *FileStorage) Ping() error {

@@ -27,10 +27,18 @@ func (m *MemoryStorage) SaveURL(shortURL, originalURL string, userID string) (st
 func (m *MemoryStorage) GetOriginalURL(shortURL string) models.OriginalURLSelectionResult {
 	attributes, exists := m.urls[shortURL]
 	if !exists {
-		return models.OriginalURLSelectionResult{"", false, errors.New("URL not found")}
+		return models.OriginalURLSelectionResult{
+			OriginalURL: "",
+			IsDeleted:   false,
+			Error:       errors.New("URL not found"),
+		}
 	}
 	originalURL := attributes[0]
-	return models.OriginalURLSelectionResult{originalURL, false, nil}
+	return models.OriginalURLSelectionResult{
+		OriginalURL: originalURL,
+		IsDeleted:   false,
+		Error:       nil,
+	}
 }
 
 func (m *MemoryStorage) Ping() error {
