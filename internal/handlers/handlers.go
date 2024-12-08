@@ -52,12 +52,12 @@ func ValidateAndSetAuthCookie(w http.ResponseWriter, r *http.Request) (string, e
 }
 
 func NotAllowedMethodsHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
 func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -110,7 +110,7 @@ func PostURLHandler(w http.ResponseWriter, r *http.Request) {
 
 func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -189,7 +189,7 @@ func PostJSONHandler(w http.ResponseWriter, r *http.Request) {
 func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Log.Info("incoming HTTP request isn't get")
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -235,7 +235,7 @@ func GetURLHandler(w http.ResponseWriter, r *http.Request) {
 
 func PingDBHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -363,7 +363,7 @@ func PostBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 func GetAllUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Log.Info("incoming HTTP request isn't get")
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
