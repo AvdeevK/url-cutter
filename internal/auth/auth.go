@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/AvdeevK/url-cutter.git/internal/logger"
 	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 	"os"
@@ -19,7 +20,8 @@ var secretKey string
 func init() {
 	secretKey = os.Getenv("SECRET_KEY")
 	if secretKey == "" {
-		panic("SECRET_KEY environment variable is not set")
+		logger.Log.Warn("system variable is non set or empty, use default key")
+		secretKey = "supersecretkey"
 	}
 }
 
